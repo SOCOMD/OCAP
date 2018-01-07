@@ -11,4 +11,4 @@
 	_this: STRING - Data to output to extension (e.g. JSON)
 */
 
-"ocap_exporter" callExtension format["{%1}%2", ocap_capManagerHost, _this];
+"ocap_exporter" callExtension format["{%1}%2", ocap_host, _this];

@@ -62,36 +62,11 @@ _atEndOfArray = {
 };
 
 _entitiesToJson = {
-	/*
-	Return json format:
-	{
-		0: {
-			startFrameNum: 22,
-			type: "unit",
-			...
-			positions: [
-          		[36, 98],
-          		[40, 100]
-        	]
-		},
-		1: {
-			startFrameNum: 32,
-			type: "unit",
-			...
-			positions: [
-				[12, 5],
-				[14, 6]
-        	]
-		},
-		...
-	}
-	*/
-
 	_entities = _this;
 	_json = "{";
 	{
 		_properties = _x select 0;
-		_positions = _x select 1;
+		_states = _x select 1;
 
 		_startFrameNo = _properties select 0;
 		_type = _properties select 1;
@@ -163,8 +138,8 @@ _entitiesToJson = {
 		};
 
 
-		// Write entity positions
-		_jsonPositions = ',"positions":[';
+		// Write entity states
+		_jsonStates = ',"states":[';
 		{
 			_alive = 1;
 			if (!(_x select 2)) then {
@@ -177,16 +152,16 @@ _entitiesToJson = {
 					_isInVehicle = 1;
 				};
 
-				_jsonPositions = _jsonPositions + format['
+				_jsonStates = _jsonStates + format['
 				[%1,%2,%3,%4]', _x select 0, round(_x select 1), _alive, _isInVehicle]; // position, direction, alive, in vehicle
 			} else {
-				_jsonPositions = _jsonPositions + format['
+				_jsonStates = _jsonStates + format['
 				[%1,%2,%3,%4]', _x select 0, round(_x select 1), _alive, _x select 3]; // position, direction, alive, crew
 			};
 
-			if !([_forEachIndex, _positions] call _atEndOfArray) then {_jsonPositions = _jsonPositions + ","};
-		} forEach _positions;
-		_jsonPositions = _jsonPositions + "]";
+			if !([_forEachIndex, _states] call _atEndOfArray) then {_jsonStates = _jsonStates + ","};
+		} forEach _states;
+		_jsonStates = _jsonStates + "]";
 
 
 		// Write frames unit fired
@@ -196,8 +171,8 @@ _entitiesToJson = {
 			_jsonFramesFired = format[',"framesFired":%1', str(_framesFired)];
 		};
 
-		//_json = _json + "{" + _jsonHeader + _jsonPositions + _jsonFramesFired + "}"; // Save this unit
-		_json = format["%1 {%2 %3 %4}", _json, _jsonHeader, _jsonPositions, _jsonFramesFired];
+		//_json = _json + "{" + _jsonHeader + _jsonStates + _jsonFramesFired + "}"; // Save this unit
+		_json = format["%1 {%2 %3 %4}", _json, _jsonHeader, _jsonStates, _jsonFramesFired];
 
 		//_json = "{}";
 		if (!([_forEachIndex, _entities] call _atEndOfArray)) then {
@@ -265,7 +240,7 @@ _eventsToJson = {
 
 
 {
-	_x set [1, []]; // Reset positions
+	_x set [1, []]; // Reset states
 	_x set [2, []]; // Reset frames fired
 } forEach ocap_entitiesData;
 ocap_eventsData = [];

@@ -125,6 +125,7 @@ namespace OCAPExporter
             {
                 Log("JSON: " + json);
             }
+            Log();
 
             dict.Add("args", argDict);
             dict.Add("json", json);
@@ -151,7 +152,7 @@ namespace OCAPExporter
 
 
         // Write string to log file and console.
-        public static void Log(string str)
+        public static void Log(string str = "")
         {
             File.AppendAllText(logfile, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss | ") + str + Environment.NewLine);
             Console.WriteLine(str);
