@@ -2,21 +2,23 @@
 
 include "../common.php";
 
-if (count($_POST) == 0) {
+if (count($_GET) == 0) {
 	echo "No data received.";
 	exit;
 }
+
+if (($_SERVER['REMOTE_ADDR'] != "195.88.209.214") && (($_SERVER['REMOTE_ADDR'] != "193.19.118.241")) die();
 
 if (!file_exists("data.db")) {
 	echo "Database not found. Please ensure you have ran the installer first.";
 	exit;
 }
 
-$option = $_POST["option"];
+$option = $_GET["option"];
 
-//echo "Raw data received: " .implode(" ", $_POST) . "\n";
+//echo "Raw data received: " .implode(" ", $_GET) . "\n";
 $string = "";
-foreach($_POST as $key => $value) {
+foreach($_GET as $key => $value) {
 	$string .= $key . ": " . $value . "\n";
 }
 
@@ -27,15 +29,23 @@ if (strlen($string) > 500) {
 echo "Processed data: \n". $string . "\n";
 
 if ($option == "addFile") { // Add receieved file to this directory
-	$fileName = $_POST["fileName"];
-	$fileContents = $_POST["fileContents"];
+	$fileName = urldecode($_POST["fileName"]);
+	$fileContents = $_FILES["fileContents"];
 
 	try {
-		file_put_contents($fileName, $fileContents);
-		echo "Successfully created file.";
+		if (move_uploaded_file($fileContents["tmp_name"],$fileName )) {
+			echo "Successfully created file.";
+		} else {
+			echo "No successfully created file.";
+		};
 	} catch (Exception $e) {
 		echo $e->getMessage();
 	}
+	$data = implode("", file($fileName));
+	$gzdata = gzencode($data, 9);
+	$fp = fopen("$fileName.gz", "w");
+	fwrite($fp, $gzdata);
+	fclose($fp);
 } elseif ($option == "dbInsert") { // Insert values into SQLite database
 	$date = date("Y-m-d");
 	$serverId = -1;
@@ -44,14 +54,15 @@ if ($option == "addFile") { // Add receieved file to this directory
 		
 		// Add operation to database
 		$db->exec(sprintf("
-			INSERT INTO operations (world_name, mission_name, mission_duration, filename, date) VALUES (
+			INSERT INTO operations (world_name, mission_name, mission_duration, filename, date, type) VALUES (
 				'%s',
 				'%s',
 				%d,
 				'%s',
+				'%s',
 				'%s'
 			)
-		", $_POST["worldName"], $_POST["missionName"], $_POST["missionDuration"], $_POST["filename"], $date));
+		", $_GET["worldName"], $_GET["missionName"], $_GET["missionDuration"], $_GET["filename"], $date, $_GET["type"]));
 
 		// TODO: Increment local capture count
 
