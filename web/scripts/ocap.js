@@ -1,7 +1,7 @@
 /*
 	OCAP - Operation Caputre And Playback
     Copyright (C) 2016 Jamie Goodson (aka MisterGoodson) (goodsonjamie@yahoo.co.uk)
-	
+
 	NOTE: This script is written in ES6 and not intended to be used in a live
     environment. Instead, this script should be transpiled to ES5 for
     browser compatibility (including Chrome).
@@ -254,7 +254,7 @@ function createInitialMarkers() {
 			let svg = marker.getElement().contentDocument;
 			let g = svg.getElementById("layer1");
 			console.log();
-	
+
 			g.setAttribute('fill', 'yellow');
 		}, 100);*/
 
@@ -337,7 +337,7 @@ function armaToLatLng(coords) {
 	return map.unproject(pixelCoords, mapMaxNativeZoom);
 };
 
-// Returns date object as little endian (day, month, year) string 
+// Returns date object as little endian (day, month, year) string
 function dateToLittleEndianString(date) {
 	return (date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear());
 };
@@ -407,7 +407,7 @@ function processOp(filepath) {
 	console.log("Processing operation: (" + filepath + ")...");
 	var time = new Date();
 	fileName = filepath.substr(5, filepath.length);
-	$.getJSON(filepath + ".gz", function (data) {
+	$.getJSON(filepath, function (data) {
 		worldName = data.worldName.toLowerCase();
 		missionName = data.missionName;
 		ui.setMissionName(missionName);
@@ -443,9 +443,9 @@ function processOp(filepath) {
 
 					if (type == "unit") {
 						let name = entry[4];
-						if (name == "" && i != 0) 
+						if (name == "" && i != 0)
 							name = positions[i - 1].name;
-						if (name == "" && i == 0) 
+						if (name == "" && i == 0)
 							name = "unknown";
 						positions.push({ position: pos, direction: dir, alive: alive, isInVehicle: (entry[3] == 1), name: name, isPlayer: entry[5] });
 					} else {
@@ -454,7 +454,7 @@ function processOp(filepath) {
 					};
 				};
 			});
-			
+
 			if (type == "unit") {
 				//if (entityJSON.name == "Error: No unit") {return}; // Temporary fix for old captures that initialised dead units
 
@@ -464,11 +464,11 @@ function processOp(filepath) {
 					group = new Group(entityJSON.group, entityJSON.side);
 					groups.addGroup(group);
 				};
-				
+
 				// Create unit and add to entities list
 				var unit = new Unit(startFrameNum, id, name, group, entityJSON.side, (entityJSON.isPlayer == 1), positions, entityJSON.framesFired);
 				entities.add(unit);
-				
+
 				// Show title side
 				if (arrSideSelect.indexOf(entityJSON.side) == -1) {
 					arrSideSelect.push(entityJSON.side);
@@ -520,7 +520,7 @@ function processOp(filepath) {
 			if (isShow) {
 				elem.style.width = 216 / countShowSide + "px";
 				elem.style.display = "inline-block";
-				
+
 			} else {
 				elem.style.display = "none";
 			}
@@ -656,7 +656,7 @@ function startPlaybackLoop() {
 			firelines.forEach(function (line) {
 				map.removeLayer(line);
 			});
-			
+
 			countCiv = 0;
 			countEast = 0;
 			countGuer = 0;
@@ -665,7 +665,7 @@ function startPlaybackLoop() {
 			entities.getAll().forEach(function playbackEntity(entity) {
 				//console.log(entity);
 				entity.manageFrame(playbackFrame);
-				
+
 				if (entity instanceof Unit) {
 					// Draw fire line (if enabled)
 					var projectilePos = entity.firedOnFrame(playbackFrame);

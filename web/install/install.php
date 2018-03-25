@@ -36,12 +36,12 @@ if ($_POST['agree']) {
 	if ($id == 0) {
 		echo "Error: Failed adding this server to statistics database (invalid ID returned).<br/>";
 		exit;
-	} 
+	}
 
 	// == Create/initialise local database + store server's details
 	try {
 		$db = new PDO('sqlite:../data/data.db'); // Create local database
-		
+
 		// Create table to store list of operations
 		$db->exec("
 			CREATE TABLE operations (
@@ -50,7 +50,8 @@ if ($_POST['agree']) {
 				mission_name TEXT,
 				mission_duration INTEGER,
 				filename TEXT,
-				date TEXT
+				date TEXT,
+				type TEXT
 			)
 		");
 
