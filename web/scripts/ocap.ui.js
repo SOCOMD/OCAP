@@ -44,13 +44,13 @@ class UI {
 		this.cursorTooltip = null;
 		this.currentSide = "";
 		this.toggleNickname = null;
-		this.nicknameEnable = true;		
+		this.nicknameEnable = true;
 		this.filterTypeGameInput = null;
 		this.filterGameInput = null;
 		this.calendar1 = null;
 		this.calendar2 = null;
-		this.filterSubmit = null;			 
-							 
+		this.filterSubmit = null;
+
 
 		this._init();
 	};
@@ -169,7 +169,7 @@ class UI {
 			toggleConnectEvents();
 		});
 		this.filterEventsInput = document.getElementById("filterEventsInput");
-		
+
 		// Setup filter panel
 		this.filterTypeGameInput = document.getElementById("filterTypeGameInput");
 		this.filterGameInput = document.getElementById("filterGameInput");
@@ -206,7 +206,7 @@ class UI {
 		// Hide/show ui on keypress
 		mapDiv.addEventListener("keypress", (event) => {
 			//console.log(event.charCode);
-			
+
 			switch (event.charCode) {
 				case 101: // e
 					this.toggleLeftPanel();
@@ -312,7 +312,7 @@ class UI {
 			this.leftPanel.style.display = "none";
 		};
 	};
-	
+
 	updateTitleSide() {
 		sideCiv.textContent = "CIV\n\r" + countCiv;
 		sideEast.textContent = "OPFOR\n\r" + countEast;
@@ -352,7 +352,7 @@ class UI {
 			this.rightPanel.style.display = "none";
 		};
 	};
-	
+
 	setModal(modal, modalHeader, modalFilter, modalBody, modalButtons) {
 		this.modal = modal;
 		this.modalHeader = modalHeader;
@@ -360,7 +360,7 @@ class UI {
 		this.modalBody = modalBody;
 		this.modalButtons = modalButtons;
 	};
-	
+
 	showModalOpSelection() {
 		// Set header/body
 		this.modalHeader.textContent = "Выбор миссии";
@@ -385,7 +385,7 @@ class UI {
 		this.showModal();
 		this.modalFilter.style.display = "inherit";
 	};
-	
+
 	setModalOpList() {
 		var OpList;
 		var n = filterTypeGameInput.options.selectedIndex;
@@ -409,7 +409,7 @@ class UI {
 		// Set body
 		var table = document.createElement("table");
 		var headerRow = document.createElement("tr");
-		
+
 		var columnNames = ["Миссия", "Карта", "Дата", "Длительность"];
 		columnNames.forEach(function(name) {
 			var th = document.createElement("th");
@@ -444,7 +444,7 @@ class UI {
 		this.modalBody.textContent = "";
 		this.modalBody.appendChild(table);
 	};
-	
+
 	makeModalButton(text, func) {
 		var button = document.createElement("div");
 		button.className = "modalButton";
@@ -453,10 +453,10 @@ class UI {
 
 		return button;
 	};
-	
+
 	showModalAbout() {
 		this.modalHeader.textContent = "Информация";
-		
+
 		this.modalBody.innerHTML = `
 			<img src="images/ocap-logo.png" height="60px" alt="OCAP">
 			<h4 style=line-height:0>${appDesc} (BETA)</h4>
@@ -466,7 +466,8 @@ class UI {
 			<a href="https://github.com/mistergoodson/OCAP" target="_blank">GitHub Link</a>
 			<br/>
 			<br/>
-			Модифицировали: Dell, Zealot, Kurt<br/>
+			Модифицировали: Dell, Zealot, Kurt<br/><br/>
+			<a href="https://github.com/Zealot111/OCAP" target="_blank">GitHub Link</a>
 			<br/>
 			Нажатие пробела пауза/воспроизвести<br/>
 			Нажатие E/R показать/скрыть левую/правую панель`;
@@ -491,7 +492,7 @@ class UI {
 			<input readonly="true" type="text" id="ShareLink">
 		`;
 
-		let text = "ocap.red-bear.ru/?";
+		let text = document.location.host + "/?";
 		text += "file=" + fileName;
 		text += "&frame=" + playbackFrame;
 		text += "&zoom=" + map.getZoom();
@@ -514,24 +515,24 @@ class UI {
 
 		this.showModal();
 	};
-	
+
 	showModal() {
 		this.modal.style.display = "inherit";
 	};
-	
+
 	hideModal() {
 		this.modal.style.display = "none";
 		this.modalFilter.style.display = "none";
 	};
-	
+
 	showPlaybackSpeedSlider() {
 		this.playbackSpeedSlider.style.display = "inherit";
 	};
-	
+
 	hidePlaybackSpeedSlider() {
 		this.playbackSpeedSlider.style.display = "none";
 	};
-	
+
 	removeEvent(event) {
 		var el = event.getElement();
 
@@ -540,7 +541,7 @@ class UI {
 			this.eventList.removeChild(el);
 		};
 	};
-	
+
 	addEvent(event) {
 		var el = event.getElement();
 
@@ -569,7 +570,7 @@ class UI {
 
 		this.filterEvent(event);
 	};
-	
+
 	showHint(text) {
 		this.hint.textContent = text;
 		this.hint.style.display = "inherit";
@@ -578,7 +579,7 @@ class UI {
 			this.hint.style.display = "none";
 		}, 5000);
 	};
-	
+
 	addTickToTimeline(frameNum) {
 		var frameWidth = this.frameSliderWidthInPercent / endFrame;
 		var tick = document.createElement("div");
@@ -588,7 +589,7 @@ class UI {
 		tick.style.width = frameWidth + "%";
 		this.eventTimeline.appendChild(tick);
 	};
-	
+
 	filterEvent(event) {
 		var el = event.getElement();
 		var filterText = this.filterEventsInput.value.toLowerCase();

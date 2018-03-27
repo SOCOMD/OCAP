@@ -7,7 +7,7 @@ if (count($_GET) == 0) {
 	exit;
 }
 
-if (($_SERVER['REMOTE_ADDR'] != "195.88.209.214") && (($_SERVER['REMOTE_ADDR'] != "193.19.118.241")) die();
+if (!in_array($_SERVER['REMOTE_ADDR'], $ipGameServer)) die();
 
 if (!file_exists("data.db")) {
 	echo "Database not found. Please ensure you have ran the installer first.";
@@ -51,7 +51,7 @@ if ($option == "addFile") { // Add receieved file to this directory
 	$serverId = -1;
 	try {
 		$db = new PDO('sqlite:data.db');
-		
+
 		// Add operation to database
 		$db->exec(sprintf("
 			INSERT INTO operations (world_name, mission_name, mission_duration, filename, date, type) VALUES (

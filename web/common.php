@@ -8,15 +8,16 @@ $debug = false;
 $appTitle = "OCAP";
 $appDesc = "Operation Capture And Playback";
 $appAuthor = "MisterGoodson (aka Goodson [3CB])";
-const VERSION = "0.5.0.1-beta";
+$ipGameServer = ["195.88.209.214", "193.19.118.241"];
+const VERSION = "2.2.1";
 
 // Please do not modify this as these stats help me get a job. Thank-you! :)
-// $statServerUrl = "http://138.201.116.116/ocap/remote/";
+$statServerUrl = "http://138.201.116.116/ocap/remote/";
 
 // Send cURL request to remote server
 // $url should not include '/ocap/remote/' and should not have a leading '/'
 function curlRemote($url, $postFields = array()) {
-	/*
+
 	global $statServerUrl;
 	$url = $statServerUrl . $url;
 
@@ -34,7 +35,7 @@ function curlRemote($url, $postFields = array()) {
 	curl_close($curl);
 
 	return $result;
-	*/
+
 }
 
 function print_debug($var) {
