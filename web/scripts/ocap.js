@@ -518,9 +518,8 @@ function processOp(filepath) {
 		function showTitleSide(elem, isShow) {
 			elem = document.getElementById(elem);
 			if (isShow) {
-				elem.style.width = 216 / countShowSide + "px";
+				elem.style.width = "calc(" + 100 / countShowSide + "% - 3px)";
 				elem.style.display = "inline-block";
-
 			} else {
 				elem.style.display = "none";
 			}

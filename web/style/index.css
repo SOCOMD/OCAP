@@ -99,12 +99,13 @@ html, body, #map {
 }
 
 #sideWest, #sideEast, #sideGuer, #sideCiv {
-	display : none;
-	width : 45px;
+	display : inline-block;
+	width : calc(25% - 3px);
 	height : 50px;
 	cursor : pointer;
 	text-align: center;
 	padding-top: 13px;
+	vertical-align: top;
 }
 
 #rightPanel .panelContent {

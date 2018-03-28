@@ -8,6 +8,10 @@ releases/
 web/.vscode/
 web2/
 build/
+web/data/data.db
+web/data/*.json
+web/data/*.gz
+web/images/maps/*
 
 # User-specific files
 *.suo
