@@ -20,7 +20,7 @@ $id = $row->remote_id; // Used later when contacting stats server
 print_debug("ID: " . $id);
 
 // Increment view count in local DB
-$db->exec(sprintf("UPDATE servers SET view_count = view_count + 1 WHERE remote_id = %d", $id)); 
+$db->exec(sprintf("UPDATE servers SET view_count = view_count + 1 WHERE remote_id = %d", $id));
 
 /*
 // Get list of operations from DB
@@ -142,7 +142,7 @@ if ($result != "") {
 			<span id="toggleFirelines"></span>
 			<span id="toggleNickname"></span>
 			<span id="toggleMapMarker"></span>
-			
+
 		</div>
 	</div>
 </div>
@@ -152,9 +152,11 @@ if ($result != "") {
 		<div id="modalHeader" class="modalHeader medium">Header</div>
 		<div id="modalFilter" class="modalFilter">
 			<select id="filterTypeGameInput">
-				<option value="" selected\>Все</option>
-				<option value="TvT">TvT</option>
-				<option value="IF">IF</option>                                    
+				<?php
+					foreach ($allTypeGames as &$param) {
+						echo "<option value=\"$param[1]\">$param[0]</option>";
+					};
+				?>
 			</select>
 			<input type="text" id="filterGameInput" placeholder="Название миссии" />
 			<input type="date" id="calendar1" value="2017-06-01">

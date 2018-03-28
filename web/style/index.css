@@ -191,8 +191,6 @@ html, body, #map {
 	outline: none;
 }
 
-
-
 #leftPanel ul, #rightPanel ul {
 	padding: 0;
 	list-style-type: none;
@@ -519,16 +517,18 @@ input[type=range]::-webkit-slider-runnable-track {
 	border:1px solid black;
 }
 
-#filterTypeGameInput,#filterGameInput {
-	margin: 2px;
+#filterTypeGameInput, #filterGameInput, #calendar1, #calendar2 {
+	margin: 4px;
 }
 
 #filterTypeGameInput {
 	height: 24px;
+	width: 60px;
 }
 
 #filterGameInput {
 	height: 18px;
+	width: 225px;
 }
 
 #filterSubmit {

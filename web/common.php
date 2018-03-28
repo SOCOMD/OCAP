@@ -9,6 +9,7 @@ $appTitle = "OCAP";
 $appDesc = "Operation Capture And Playback";
 $appAuthor = "MisterGoodson (aka Goodson [3CB])";
 $ipGameServer = ["195.88.209.214", "193.19.118.241"];
+$allTypeGames = [["Все", ""], ["TvT", "tvt"], ["IF", "if"]];
 const VERSION = "2.2.1";
 
 // Please do not modify this as these stats help me get a job. Thank-you! :)
