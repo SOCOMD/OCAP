@@ -105,11 +105,11 @@ if ($result != "") {
 		</div>
 	</div>
 	<div id="rightPanel">
-		<div class="title bold">События</div>
+		<div class="title bold" data-lb="events"></div>
 		<div class="filterBox">
 			<div id="filterHitEventsButton" class="filterHit"></div>
 			<div id="filterConnectEventsButton" class="filterConnect"></div>
-			<input type="text" id="filterEventsInput" placeholder="Фильтр" />
+			<input type="text" id="filterEventsInput" placeholder="" data-lb="filter"/>
 		</div>
 		<div class="panelContent">
 			<ul id="eventList"></ul>
@@ -158,7 +158,7 @@ if ($result != "") {
 					};
 				?>
 			</select>
-			<input type="text" id="filterGameInput" placeholder="Название миссии" />
+			<input type="text" id="filterGameInput" placeholder="" data-lb="name_missions" />
 			<input type="date" id="calendar1" value="2017-06-01">
 			<input type="date" id="calendar2" value=<?php echo(date("Y-m-d"))?>>
 			<div id="filterSubmit"></div>
@@ -170,6 +170,7 @@ if ($result != "") {
 
 <div id="hint" class="hint">Test popup</div>
 
+	<script src="scripts/localizable.js"></script>
 <script>
 
 let appVersion = <?php echo json_encode(VERSION); ?>;

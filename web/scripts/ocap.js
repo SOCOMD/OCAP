@@ -612,14 +612,14 @@ function toggleHitEvents(showHint = true) {
 	let text;
 	if (ui.showHitEvents) {
 		ui.filterHitEventsButton.style.opacity = 1;
-		text = "показаны";
+		text = getLocalizable("shown");
 	} else {
 		ui.filterHitEventsButton.style.opacity = 0.5;
-		text = "скрыты";
+		text = getLocalizable("hidden");
 	};
 
 	if (showHint) {
-		ui.showHint("Эвенты попадания " + text);
+		ui.showHint(getLocalizable("event_fire") + text);
 	};
 };
 
@@ -629,14 +629,14 @@ function toggleConnectEvents(showHint = true) {
 	let text;
 	if (ui.showConnectEvents) {
 		ui.filterConnectEventsButton.style.opacity = 1;
-		text = "показаны";
+		text = getLocalizable("shown");
 	} else {
 		ui.filterConnectEventsButton.style.opacity = 0.5;
-		text = "скрыты";
+		text = getLocalizable("hidden");
 	};
 
 	if (showHint) {
-		ui.showHint("Эвенты подключение/отключения " + text);
+		ui.showHint(getLocalizable("event_dis-connected") + text);
 	};
 };
 

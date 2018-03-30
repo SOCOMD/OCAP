@@ -39,7 +39,7 @@ class HitKilledEvent {
 		if (this.causedBy == null) {
 			this.distance = 0;
 			this.weapon = "N/A";
-			this.causedBy = new Unit(null, null, "кто-то", null, null, null, null); // Dummy unit
+			this.causedBy = new Unit(null, null, getLocalizable("something"), null, null, null, null); // Dummy unit
 		};
 
 
@@ -59,10 +59,10 @@ class HitKilledEvent {
 		var textSpan = document.createElement("span");
 		switch (this.type) {
 			case "killed":
-				textSpan.textContent = " был убит ";
+				localizable(textSpan, "by_killer");
 				break;
 			case "hit":
-				textSpan.textContent = " был ранен ";
+				localizable(textSpan, "by_injured");
 				break;
 		};
 
@@ -112,7 +112,7 @@ class ConnectEvent {
 		// Create list element for this event (for later use)
 		var span = document.createElement("span");
 		span.className = "medium";
-		span.textContent = this.unitName + " " + this.type;
+		localizable(span, this.type, "", `${this.unitName} `);
 
 		var detailsDiv = document.createElement("div");
 		detailsDiv.className = "eventDetails";
@@ -143,7 +143,7 @@ class endMissionEvent {
 		if (this.side == "") {
 			span.textContent = msg;
 		} else {
-			span.textContent = `Победа ${side}. ${msg}`;
+			localizable(span, "win", ` ${side}. ${msg}`);
 			switch (true) {
 				case (side == "EAST"):
 					span.className = "opfor";

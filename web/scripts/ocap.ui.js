@@ -86,12 +86,12 @@ class UI {
 			var text;
 			if (this.nicknameEnable) {
 				toggleNicknameButton.style.opacity = 1;
-				text = "показываются"
+				text = getLocalizable("shown");
 			} else {
 				toggleNicknameButton.style.opacity = 0.5;
-				text = "скрыты"
+				text = getLocalizable("hidden");
 			};
-			this.showHint("Никнеймы игроков и название техники " + text);
+			this.showHint(getLocalizable("nickname") + text);
 		});
 		this.toggleNicknameButton = toggleNicknameButton;
 		// Toggle firelines button
@@ -102,13 +102,13 @@ class UI {
 			var text;
 			if (this.firelinesEnabled) {
 				toggleFirelinesButton.style.opacity = 1;
-				text = "показываются";
+				text = getLocalizable("shown");
 			} else {
 				toggleFirelinesButton.style.opacity = 0.5;
-				text = "скрыты (исключение убийства)";
+				text = getLocalizable("hidden");
 			};
 
-			this.showHint("Линии выстрелов " + text);
+			this.showHint(getLocalizable("line_fire") + text);
 		});
 		this.toggleFirelinesButton = toggleFirelinesButton;
 
@@ -120,13 +120,13 @@ class UI {
 			var text;
 			if (this.markersEnable) {
 				toggleMarkersButton.style.opacity = 1;
-				text = "показываются";
+				text = getLocalizable("shown");
 			} else {
 				toggleMarkersButton.style.opacity = 0.5;
-				text = "скрыты";
+				text = getLocalizable("hidden");
 			};
 
-			this.showHint("Маркеры " + text);
+			this.showHint(getLocalizable("markers") + text);
 		});
 		this.toggleMarkersButton = toggleMarkersButton;
 
@@ -363,8 +363,8 @@ class UI {
 
 	showModalOpSelection() {
 		// Set header/body
-		this.modalHeader.textContent = "Выбор миссии";
-		this.modalBody.textContent = "Составление списка...";
+		localizable(this.modalHeader, "select_mission");
+		localizable(this.modalBody, "list_compilation");
 
 		// Add buttons
 /*		var playButton = document.createElement("div");
@@ -404,16 +404,14 @@ class UI {
 			}
 		});
 
-		this.modalHeader.textContent = "Выбор миссии";
-
 		// Set body
 		var table = document.createElement("table");
 		var headerRow = document.createElement("tr");
 
-		var columnNames = ["Миссия", "Карта", "Дата", "Длительность"];
+		var columnNames = ["mission", "map", "data", "durability"];
 		columnNames.forEach(function(name) {
 			var th = document.createElement("th");
-			th.textContent = name;
+			localizable(th, name);
 			th.className = "medium";
 			headerRow.appendChild(th);
 		});
@@ -436,7 +434,7 @@ class UI {
 			});
 
 			row.addEventListener("click", () => {
-				this.modalBody.textContent = "Загрузка...";
+				localizable(this.modalBody, "loading");
 				processOp("data/" + op.filename);
 			});
 			table.insertBefore(row, table.childNodes[1]);
@@ -455,22 +453,34 @@ class UI {
 	};
 
 	showModalAbout() {
-		this.modalHeader.textContent = "Информация";
+		localizable(this.modalHeader, "info");
 
 		this.modalBody.innerHTML = `
 			<img src="images/ocap-logo.png" height="60px" alt="OCAP">
 			<h4 style=line-height:0>${appDesc} (BETA)</h4>
 			<h5 style=line-height:0>v${appVersion}</h5>
-			Создатель оригинального OCAP: MisterGoodson (aka Goodson [3CB]) <br/>
+			Author: MisterGoodson (aka Goodson [3CB]) <br/>
 			<a href="https://forums.bistudio.com/forums/topic/194164-ocap-operation-capture-and-playback-aar-system/" target="_blank">BI Forum Post</a><br/>
 			<a href="https://github.com/mistergoodson/OCAP" target="_blank">GitHub Link</a>
 			<br/>
 			<br/>
-			Модифицировали: Dell, Zealot, Kurt<br/><br/>
+			Modified: Dell, Zealot, Kurt<br/>
 			<a href="https://github.com/Zealot111/OCAP" target="_blank">GitHub Link</a>
 			<br/>
-			Нажатие пробела пауза/воспроизвести<br/>
-			Нажатие E/R показать/скрыть левую/правую панель`;
+			<span id="keyControl-playPause"></span><br/>
+			<span id="keyControl-leftPanel"></span><br/>
+			<span id="keyControl-rightPanel"></span><br/>
+			<span id="keyControl-lang"></span>
+			<select id="switchLang">
+				<option value="ru"${current_lang == "ru" ? 'selected/' : ''}>Русский</option>
+				<option value="en"${current_lang == "en" ? 'selected/' : ''}>English</option>
+			</select>`;
+		localizable(document.getElementById("keyControl-playPause"), "play-pause");
+		localizable(document.getElementById("keyControl-leftPanel"), "show-hide-left-panel");
+		localizable(document.getElementById("keyControl-rightPanel"), "show-hide-right-panel");
+		localizable(document.getElementById("keyControl-lang"), "language");
+		document.getElementById("switchLang").onchange = function(){switchLocalizable(this.value)};
+		deleteLocalizable(this.modalBody);
 		this.modalButtons.innerHTML = "";
 		this.modalButtons.appendChild(this.makeModalButton("Close", function() {
 			ui.hideModal();
@@ -485,12 +495,9 @@ class UI {
 			this.modal.wasStopped = true;
 			playPause();
 		}
-		this.modalHeader.textContent = "Поделиться";
-
-		this.modalBody.innerHTML = `
-			<center> <h2 style="color:white"> Скопируйте ссылку </h2> </center>
-			<input readonly="true" type="text" id="ShareLink">
-		`;
+		localizable(this.modalHeader, "shared");
+		localizable(this.modalBody, "copy_link", `</h2> </center>
+		<input readonly="true" type="text" id="ShareLink">`, `<center> <h2 style="color:white">`);
 
 		let text = document.location.host + "/?";
 		text += "file=" + fileName;
@@ -506,7 +513,7 @@ class UI {
 		});
 
 		this.modalButtons.innerHTML = "";
-		this.modalButtons.appendChild(this.makeModalButton("Close", function() {
+		this.modalButtons.appendChild(this.makeModalButton(getLocalizable("close"), function() {
 			ui.hideModal();
 			if (ui.modal.wasStopped) {
 				playPause();
