@@ -1,39 +1,40 @@
-// by Zealot 
+п»ї// by Zealot 
 // MIT licence https://opensource.org/licenses/MIT
 
 
-#pragma region Версия
+#pragma region Р’РµСЂСЃРёСЏ
 /*
 
-v 2.0.0.1 2017-09-25 Zealot Начальная версия. Расширение еще ничего не делает.
-v 2.0.1.1 2017-09-25 Zealot Начальная версия. Уже должно делать почти все.
-v 2.0.2.1 2017-09-28 Zealot Добавлена команда :LOG:
+v 2.0.0.1 2017-09-25 Zealot РќР°С‡Р°Р»СЊРЅР°СЏ РІРµСЂСЃРёСЏ. Р Р°СЃС€РёСЂРµРЅРёРµ РµС‰Рµ РЅРёС‡РµРіРѕ РЅРµ РґРµР»Р°РµС‚.
+v 2.0.1.1 2017-09-25 Zealot РќР°С‡Р°Р»СЊРЅР°СЏ РІРµСЂСЃРёСЏ. РЈР¶Рµ РґРѕР»Р¶РЅРѕ РґРµР»Р°С‚СЊ РїРѕС‡С‚Рё РІСЃРµ.
+v 2.0.2.1 2017-09-28 Zealot Р”РѕР±Р°РІР»РµРЅР° РєРѕРјР°РЅРґР° :LOG:
 v 2.0.2.2 2017-09-28 Zealot Exception handling
-v 2.0.3.2 2017-09-28 Zealot Отдельный файл для лога по команде :LOG:
-v 2.0.3.3 2017-09-28 Zealot Проверено в работе
-v 2.0.4.1 2017-09-29 Zealot Добавлен Curl
-v 2.0.5.0 2017-10-03 Zealot Загрузка файлов через http, файлы создаются во временном каталоге системы, конфиг в json
+v 2.0.3.2 2017-09-28 Zealot РћС‚РґРµР»СЊРЅС‹Р№ С„Р°Р№Р» РґР»СЏ Р»РѕРіР° РїРѕ РєРѕРјР°РЅРґРµ :LOG:
+v 2.0.3.3 2017-09-28 Zealot РџСЂРѕРІРµСЂРµРЅРѕ РІ СЂР°Р±РѕС‚Рµ
+v 2.0.4.1 2017-09-29 Zealot Р”РѕР±Р°РІР»РµРЅ Curl
+v 2.0.5.0 2017-10-03 Zealot Р—Р°РіСЂСѓР·РєР° С„Р°Р№Р»РѕРІ С‡РµСЂРµР· http, С„Р°Р№Р»С‹ СЃРѕР·РґР°СЋС‚СЃСЏ РІРѕ РІСЂРµРјРµРЅРЅРѕРј РєР°С‚Р°Р»РѕРіРµ СЃРёСЃС‚РµРјС‹, РєРѕРЅС„РёРі РІ json
 v 2.0.5.1 2017-10-03 Zealot bugfix
-v 2.0.6.1 2017-10-07 Zealot bugfix curl encode && теперь нужно вызывать START перед началом записи, добавлен :FRAMENO:, :FIRED:
+v 2.0.6.1 2017-10-07 Zealot bugfix curl encode && С‚РµРїРµСЂСЊ РЅСѓР¶РЅРѕ РІС‹Р·С‹РІР°С‚СЊ START РїРµСЂРµРґ РЅР°С‡Р°Р»РѕРј Р·Р°РїРёСЃРё, РґРѕР±Р°РІР»РµРЅ :FRAMENO:, :FIRED:
 v 2.0.6.2 2017-10-08 Zealot fixed unicode
-v 2.0.7.0 2017-10-23 Zealot Запись маркеров, фикс обработки строк, старая запись не сохраняется при старте новой, немного фиксов
-v 2.0.7.1 2017-10-25 Zealot Новый формат записи маркеров
+v 2.0.7.0 2017-10-23 Zealot Р—Р°РїРёСЃСЊ РјР°СЂРєРµСЂРѕРІ, С„РёРєСЃ РѕР±СЂР°Р±РѕС‚РєРё СЃС‚СЂРѕРє, СЃС‚Р°СЂР°СЏ Р·Р°РїРёСЃСЊ РЅРµ СЃРѕС…СЂР°РЅСЏРµС‚СЃСЏ РїСЂРё СЃС‚Р°СЂС‚Рµ РЅРѕРІРѕР№, РЅРµРјРЅРѕРіРѕ С„РёРєСЃРѕРІ
+v 2.0.7.1 2017-10-25 Zealot РќРѕРІС‹Р№ С„РѕСЂРјР°С‚ Р·Р°РїРёСЃРё РјР°СЂРєРµСЂРѕРІ
 v 2.0.7.2 2017-10-27 Zealot bugfix
-v 2.0.7.3 2017-11-06 Zealot Старый формат записи маркеров
-v 3.0.7.3 2017-11-06 Zealot Release для ocap v.2 команды :NEW:UNIT: :NEW:VEH: :UPDATE:UNIT: :UPDATE:VEH:
+v 2.0.7.3 2017-11-06 Zealot РЎС‚Р°СЂС‹Р№ С„РѕСЂРјР°С‚ Р·Р°РїРёСЃРё РјР°СЂРєРµСЂРѕРІ
+v 3.0.7.3 2017-11-06 Zealot Release РґР»СЏ ocap v.2 РєРѕРјР°РЅРґС‹ :NEW:UNIT: :NEW:VEH: :UPDATE:UNIT: :UPDATE:VEH:
 v 3.0.7.4 2017-11-06 Zealot bug https://bitbucket.org/mrDell/ocap2/issues/24/dll-403-unit-vehicle
-v 3.0.7.5 2018-01-21 Zealot MarkerMove меняет предыдущую запись если маркер уже был, а не создает новую
-v 3.0.7.6 2018-01-21 Zealot Теперь ошибки обрабатываются с помощью исключений
-v 3.0.8.0 2018-01-21 Zealot При команде :START: происходит реконфигурация логгера и он начинает писать в новый файл
+v 3.0.7.5 2018-01-21 Zealot MarkerMove РјРµРЅСЏРµС‚ РїСЂРµРґС‹РґСѓС‰СѓСЋ Р·Р°РїРёСЃСЊ РµСЃР»Рё РјР°СЂРєРµСЂ СѓР¶Рµ Р±С‹Р», Р° РЅРµ СЃРѕР·РґР°РµС‚ РЅРѕРІСѓСЋ
+v 3.0.7.6 2018-01-21 Zealot РўРµРїРµСЂСЊ РѕС€РёР±РєРё РѕР±СЂР°Р±Р°С‚С‹РІР°СЋС‚СЃСЏ СЃ РїРѕРјРѕС‰СЊСЋ РёСЃРєР»СЋС‡РµРЅРёР№
+v 3.0.8.0 2018-01-21 Zealot РџСЂРё РєРѕРјР°РЅРґРµ :START: РїСЂРѕРёСЃС…РѕРґРёС‚ СЂРµРєРѕРЅС„РёРіСѓСЂР°С†РёСЏ Р»РѕРіРіРµСЂР° Рё РѕРЅ РЅР°С‡РёРЅР°РµС‚ РїРёСЃР°С‚СЊ РІ РЅРѕРІС‹Р№ С„Р°Р№Р»
+v 3.0.8.1 2018-06-16 Zealot РџСЂРё РєРѕРјР°РЅРґРµ SAVE РµСЃР»Рё РІ РЅР°Р·РІР°РЅРёРё РјРёСЃСЃРёРё РµСЃС‚СЊ РєР°РІС‹С‡РєРё РІС‹РєРёРґС‹РІР°РµС‚СЃСЏ РёСЃРєР»СЋС‡РµРЅРёРµ
 
 TODO:
-- сжатие данных
-- чтение запись настроек
+- СЃР¶Р°С‚РёРµ РґР°РЅРЅС‹С…
+- С‡С‚РµРЅРёРµ Р·Р°РїРёСЃСЊ РЅР°СЃС‚СЂРѕРµРє
 
 
 */
 
-#define CURRENT_VERSION "3.0.8.0"
+#define CURRENT_VERSION "3.0.8.1"
 
 #pragma endregion
 
@@ -73,20 +74,20 @@ TODO:
 #define CONFIG_NAME L"OcapReplaySaver2.cfg.json"
 #define CONFIG_NAME_SAMPLE L"OcapReplaySaver2.cfg.json.sample"
 
-#define CMD_NEW_UNIT		":NEW:UNIT:"  // новый юнит зарегистрирована ocap
-#define CMD_NEW_VEH			":NEW:VEH:"  // новая техника зарегистрирована ocap
-#define CMD_EVENT			":EVENT:" // новое событие, кто-то зашел, вышел, стрельнул и попал
-#define CMD_CLEAR			":CLEAR:" // очистить json
-#define CMD_UPDATE_UNIT		":UPDATE:UNIT:" // обновить данные по позиции юнита
-#define CMD_UPDATE_VEH		":UPDATE:VEH:" // обновить данные по позиции техники
-#define CMD_SAVE			":SAVE:" // записать json во временный файл и попробовать отправить по сети
-#define CMD_LOG				":LOG:" // сделать запись в отдельный файл лога
-#define CMD_START			":START:" // начать запись ocap реплея
-#define CMD_FIRED			":FIRED:" // кто-то стрельнул
+#define CMD_NEW_UNIT		":NEW:UNIT:"  // РЅРѕРІС‹Р№ СЋРЅРёС‚ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅР° ocap
+#define CMD_NEW_VEH			":NEW:VEH:"  // РЅРѕРІР°СЏ С‚РµС…РЅРёРєР° Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅР° ocap
+#define CMD_EVENT			":EVENT:" // РЅРѕРІРѕРµ СЃРѕР±С‹С‚РёРµ, РєС‚Рѕ-С‚Рѕ Р·Р°С€РµР», РІС‹С€РµР», СЃС‚СЂРµР»СЊРЅСѓР» Рё РїРѕРїР°Р»
+#define CMD_CLEAR			":CLEAR:" // РѕС‡РёСЃС‚РёС‚СЊ json
+#define CMD_UPDATE_UNIT		":UPDATE:UNIT:" // РѕР±РЅРѕРІРёС‚СЊ РґР°РЅРЅС‹Рµ РїРѕ РїРѕР·РёС†РёРё СЋРЅРёС‚Р°
+#define CMD_UPDATE_VEH		":UPDATE:VEH:" // РѕР±РЅРѕРІРёС‚СЊ РґР°РЅРЅС‹Рµ РїРѕ РїРѕР·РёС†РёРё С‚РµС…РЅРёРєРё
+#define CMD_SAVE			":SAVE:" // Р·Р°РїРёСЃР°С‚СЊ json РІРѕ РІСЂРµРјРµРЅРЅС‹Р№ С„Р°Р№Р» Рё РїРѕРїСЂРѕР±РѕРІР°С‚СЊ РѕС‚РїСЂР°РІРёС‚СЊ РїРѕ СЃРµС‚Рё
+#define CMD_LOG				":LOG:" // СЃРґРµР»Р°С‚СЊ Р·Р°РїРёСЃСЊ РІ РѕС‚РґРµР»СЊРЅС‹Р№ С„Р°Р№Р» Р»РѕРіР°
+#define CMD_START			":START:" // РЅР°С‡Р°С‚СЊ Р·Р°РїРёСЃСЊ ocap СЂРµРїР»РµСЏ
+#define CMD_FIRED			":FIRED:" // РєС‚Рѕ-С‚Рѕ СЃС‚СЂРµР»СЊРЅСѓР»
 
-#define CMD_MARKER_CREATE	":MARKER:CREATE:" // был создан маркер на карте
-#define CMD_MARKER_DELETE	":MARKER:DELETE:" // маркер удалили
-#define CMD_MARKER_MOVE		":MARKER:MOVE:" // маркер передвинули
+#define CMD_MARKER_CREATE	":MARKER:CREATE:" // Р±С‹Р» СЃРѕР·РґР°РЅ РјР°СЂРєРµСЂ РЅР° РєР°СЂС‚Рµ
+#define CMD_MARKER_DELETE	":MARKER:DELETE:" // РјР°СЂРєРµСЂ СѓРґР°Р»РёР»Рё
+#define CMD_MARKER_MOVE		":MARKER:MOVE:" // РјР°СЂРєРµСЂ РїРµСЂРµРґРІРёРЅСѓР»Рё
 
 using namespace std;
 
@@ -201,7 +202,7 @@ std::string removeQuotes(const char * c) {
 	return r;
 }
 
-// убирает начальные и конечные кавычки в текстк, сдвоенные кавычки превращает в одинарные
+// СѓР±РёСЂР°РµС‚ РЅР°С‡Р°Р»СЊРЅС‹Рµ Рё РєРѕРЅРµС‡РЅС‹Рµ РєР°РІС‹С‡РєРё РІ С‚РµРєСЃС‚Рє, СЃРґРІРѕРµРЅРЅС‹Рµ РєР°РІС‹С‡РєРё РїСЂРµРІСЂР°С‰Р°РµС‚ РІ РѕРґРёРЅР°СЂРЅС‹Рµ
 std::string prepStr(const char * c) {
 	std::string out(c);
 	std::regex e("\"\"");
@@ -214,7 +215,7 @@ std::string prepStr(const char * c) {
 }
 
 void prepareMarkerFrames(int frames) {
-	// причесывает "Markers"
+	// РїСЂРёС‡РµСЃС‹РІР°РµС‚ "Markers"
 
 	try {
 		if (j["Markers"].is_null() || !j["Markers"].is_array() || j["Markers"].size() < 1) {
@@ -223,25 +224,25 @@ void prepareMarkerFrames(int frames) {
 		}
 
 		/*
-		маркер сохраняется как:
+		РјР°СЂРєРµСЂ СЃРѕС…СЂР°РЅСЏРµС‚СЃСЏ РєР°Рє:
 		[
-		0	:	“тип маркера”, // “” имя иконки маркера
-		1	:	“Подпись маркера”,
-		2	:	12, //кто поставил id
-		3	:	“000000”, //цвет в HEX
-		4	:	52, // стартовый фрейм
-		5	:	104, // конечный фрейм
+		0	:	вЂњС‚РёРї РјР°СЂРєРµСЂР°вЂќ, // вЂњвЂќ РёРјСЏ РёРєРѕРЅРєРё РјР°СЂРєРµСЂР°
+		1	:	вЂњРџРѕРґРїРёСЃСЊ РјР°СЂРєРµСЂР°вЂќ,
+		2	:	12, //РєС‚Рѕ РїРѕСЃС‚Р°РІРёР» id
+		3	:	вЂњ000000вЂќ, //С†РІРµС‚ РІ HEX
+		4	:	52, // СЃС‚Р°СЂС‚РѕРІС‹Р№ С„СЂРµР№Рј
+		5	:	104, // РєРѕРЅРµС‡РЅС‹Р№ С„СЂРµР№Рј
 		6	:	0, // 0 -east, 1 - west, 2 - resistance, 3- civilian, -1 - global
-		7	:	[[52,[1000,5000],180],[70,[1500,5600],270]] // позиция
+		7	:	[[52,[1000,5000],180],[70,[1500,5600],270]] // РїРѕР·РёС†РёСЏ
 		]
 		*/
 		/*
 		[0:_mname , 1: 0, 2 : swt_cfgMarkers_names select _type, 3: _mtext, 4: ocap_captureFrameNo, 5:-1, 6: _pl getVariable ["ocap_id", 0],
 		7: call bis_fnc_colorRGBtoHTML, 8:[1,1], 9:side _pl call BIS_fnc_sideID, 10:_mpos]]
-		оставить:  2, 3, 4, 5, 6, 7, 9, 10
+		РѕСЃС‚Р°РІРёС‚СЊ:  2, 3, 4, 5, 6, 7, 9, 10
 		*/
 
-		// чистит "Markers"
+		// С‡РёСЃС‚РёС‚ "Markers"
 		for (int i = 0; i < j["Markers"].size(); ++i) {
 			json ja = j["Markers"][i];
 			if (ja[5].get<int>() == -1) {
@@ -299,11 +300,11 @@ int commandMarkerCreate(const char **args, int argsCnt) {
 	COMMAND_CHECK_INPUT_PARAMETERS(11)
 	COMMAND_CHECK_WRITING_STATE
 
-	//создать новый маркер
+	//СЃРѕР·РґР°С‚СЊ РЅРѕРІС‹Р№ РјР°СЂРєРµСЂ
 	if (j["Markers"].is_null()) {
 		j["Markers"] = json::array();
 	}
-	/* входные параметры
+	/* РІС…РѕРґРЅС‹Рµ РїР°СЂР°РјРµС‚СЂС‹
 	[0:_mname , 1: 0, 2 : swt_cfgMarkers_names select _type, 3: _mtext, 4: ocap_captureFrameNo, 5:-1, 6: _pl getVariable ["ocap_id", 0],
 	 7: call bis_fnc_colorRGBtoHTML, 8:[1,1], 9:side _pl call BIS_fnc_sideID, 10:_mpos]]
 	*/
@@ -323,7 +324,7 @@ int commandMarkerCreate(const char **args, int argsCnt) {
 }
 
 int commandMarkerDelete(const char **args, int argsCnt) {
-	//найти старый маркер и поставить ему текущий номер фрейма
+	//РЅР°Р№С‚Рё СЃС‚Р°СЂС‹Р№ РјР°СЂРєРµСЂ Рё РїРѕСЃС‚Р°РІРёС‚СЊ РµРјСѓ С‚РµРєСѓС‰РёР№ РЅРѕРјРµСЂ С„СЂРµР№РјР°
 	COMMAND_CHECK_INPUT_PARAMETERS(2)
 	COMMAND_CHECK_WRITING_STATE
 
@@ -342,18 +343,18 @@ int commandMarkerMove(const char **args, int argsCnt) {
 	COMMAND_CHECK_INPUT_PARAMETERS(3)
 	COMMAND_CHECK_WRITING_STATE
 
-	json mname = json::parse(args[0]); // имя маркера
+	json mname = json::parse(args[0]); // РёРјСЏ РјР°СЂРєРµСЂР°
 	auto it = find_if(j["Markers"].rbegin(), j["Markers"].rend(), [&](const auto & i) { return i[0] == mname; });
 	if (it == j["Markers"].rend()) {
 		LOG(ERROR) << "No such marker" << args[0];
 		return 7;
 	}
 	json coordRecord = json::array({ json::parse(args[1]), json::parse(args[2]), 0});
-	// ищем последнюю запись с таким же фреймом
+	// РёС‰РµРј РїРѕСЃР»РµРґРЅСЋСЋ Р·Р°РїРёСЃСЊ СЃ С‚Р°РєРёРј Р¶Рµ С„СЂРµР№РјРѕРј
 	int frame = coordRecord[0].get<int>();
 	auto coord = find_if((*it)[10].rbegin(), (*it)[10].rend(), [&](const auto & i) { return i[0] == frame; });
 	if (coord == (*it)[10].rend()) {
-		// такой записи нет
+		// С‚Р°РєРѕР№ Р·Р°РїРёСЃРё РЅРµС‚
 		LOG(TRACE) << "No marker coord on this frame. Adding new." << coordRecord;
 		(*it)[10].push_back(coordRecord);
 	}
@@ -447,7 +448,7 @@ int commandNewVeh(const char **args, int argsCnt) {
 
 
 
-#pragma region Вычитка конфига
+#pragma region Р’С‹С‡РёС‚РєР° РєРѕРЅС„РёРіР°
 void readWriteConfig(HMODULE hModule) {
 	wchar_t szPath[MAX_PATH], szDirPath[_MAX_DIR];
 	GetModuleFileNameW(hModule, szPath, MAX_PATH);
@@ -625,7 +626,7 @@ int commandSave(const char **args, int argsCnt) {
 	LOG(INFO) << args[0] << args[1] << args[2] << args[3] << args[4];
 
 	j["worldName"] = json::parse(args[0]);
-	j["missionName"] = json::parse(args[1]);
+	j["missionName"] = json::string_t(prepStr(args[1]));
 	j["missionAuthor"] = json::parse(args[2]);
 	j["captureDelay"] = json::parse(args[3]);
 	j["endFrame"] = json::parse(args[4]);
@@ -634,8 +635,7 @@ int commandSave(const char **args, int argsCnt) {
 
 	string tName = saveCurrentReplayToTempFile();
 	string fname = generateResultFileName(j["missionName"].get<std::string>());
-	
-	thread curlThread(curlActions, json::parse(args[0]), json::parse(args[1]), to_string(stod(args[3]) * stod(args[4])), fname, tName);
+	thread curlThread(curlActions, json::parse(args[0]), j["missionName"].get<std::string>(), to_string(stod(args[3]) * stod(args[4])), fname, tName);
 	curlThread.detach();
 	return commandClear(args, argsCnt);
 }
