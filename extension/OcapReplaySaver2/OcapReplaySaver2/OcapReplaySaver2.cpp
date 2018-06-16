@@ -396,7 +396,7 @@ int commandStart(const char **args, int argsCnt) {
 	COMMAND_CHECK_INPUT_PARAMETERS(4)
 
 	if (is_writing) {
-		LOG(ERROR) << ":START: while writing mission. Clearing old data.";
+		LOG(WARNING) << ":START: while writing mission. Clearing old data.";
 		commandClear(args, argsCnt);
 	}
 	LOG(INFO) << "Closing old log. Starting record." << args[0] << args[1] << args[2] << args[3];
@@ -468,7 +468,7 @@ void readWriteConfig(HMODULE hModule) {
 
 	json jcfg;
 	if (!cfg.is_open()) {
-		LOG(ERROR) << "Cannot open cfg file! Using default params.";
+		LOG(WARNING) << "Cannot open cfg file! Using default params.";
 		return;
 	}
 	cfg >> jcfg;
@@ -476,28 +476,28 @@ void readWriteConfig(HMODULE hModule) {
 		config.addFileUrl = jcfg["addFileUrl"].get<string>();
 	}
 	else {
-		LOG(ERROR) << "addFileUrl should be string!";
+		LOG(WARNING) << "addFileUrl should be string!";
 	}
 
 	if (!jcfg["dbInsertUrl"].is_null() && jcfg["dbInsertUrl"].is_string()) {
 		config.dbInsertUrl = jcfg["dbInsertUrl"].get<string>();
 	}
 	else {
-		LOG(ERROR) << "dbInsertUrl should be string!";
+		LOG(WARNING) << "dbInsertUrl should be string!";
 	}
 
 	if (!jcfg["httpRequestTimeout"].is_null() && jcfg["httpRequestTimeout"].is_number_integer()) {
 		config.httpRequestTimeout = jcfg["httpRequestTimeout"].get<int>();
 	}
 	else {
-		LOG(ERROR) << "httpRequestTimeout should be integer!";
+		LOG(WARNING) << "httpRequestTimeout should be integer!";
 	}
 
 	if (!jcfg["traceLog"].is_null() && jcfg["traceLog"].is_number_integer()) {
 		config.traceLog = jcfg["traceLog"].get<int>();
 	}
 	else {
-		LOG(ERROR) << "traceLog should be integer!";
+		LOG(WARNING) << "traceLog should be integer!";
 	}
 
 	if (config.traceLog) {
