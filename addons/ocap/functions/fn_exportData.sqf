@@ -2,7 +2,7 @@
 params [["_sideWon", sideEmpty, [sideEmpty]], ["_description", "", [""]]];
 if (!ocap_capture) exitWith {LOG(["fnc_exportData.sqf called! OCAP don't start."]);};
 
-_realyTime = diag_tickTime - ocap_startTime;
+_realyTime = time - ocap_startTime;
 _ocapTime = ocap_frameCaptureDelay * ocap_captureFrameNo;
 LOG(ARR6("fnc_exportData.sqf: RealyTime =", _realyTime," OcapTime =", _ocapTime," delta =", _realyTime - _OcapTime));
 

@@ -24,7 +24,7 @@ private _getClass = {
 
 waitUntil{(count(allPlayers) >= ocap_minPlayerCount)};
 ocap_capture = true;
-ocap_startTime = diag_tickTime;
+ocap_startTime = time;
 LOG(ARR3(__FILE__, "ocap_capture start, time:", ocap_startTime));
 private _id = 0;
 while {ocap_capture} do {
@@ -67,7 +67,7 @@ while {ocap_capture} do {
 			};
 			false
 		} count (allUnits + allDeadMen);
-		
+
 		{
 			if !(_x getVariable ["ocap_isInitialised", false]) then {
 				_vehType = typeOf _x;

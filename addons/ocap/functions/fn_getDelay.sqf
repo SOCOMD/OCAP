@@ -8,7 +8,7 @@
 #include "\ocap\script_macros.hpp"
 private "_sleep";
 isNil {
-	_relativelyTime = diag_tickTime - ocap_startTime;
+	_relativelyTime = time - ocap_startTime;
 	_sleep = (ocap_captureFrameNo + 1) * ocap_frameCaptureDelay - _relativelyTime;
 	if ((ocap_captureFrameNo % 10) isEqualTo 0) then {
 		LOG(ARR4("DEBUG: Frame", ocap_captureFrameNo, "is created in ~", ocap_frameCaptureDelay - _sleep));
