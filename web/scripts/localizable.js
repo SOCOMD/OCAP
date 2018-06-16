@@ -9,7 +9,7 @@ let _localizable = {
 	},
 	"by_killer": {
 		"ru": " был убит ",
-		"en": " by killer "
+		"en": " by killed "
 	},
 	"connected": {
 		"ru": "подключился",
