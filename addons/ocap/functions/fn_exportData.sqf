@@ -9,6 +9,6 @@ LOG(ARR6("fnc_exportData.sqf: RealyTime =", _realyTime," OcapTime =", _ocapTime,
 ocap_capture = false;
 ocap_endFrameNo = ocap_captureFrameNo;
 
-[":EVENT:", [ocap_endFrameNo, "endMission", [str _sideWon, _description]]] call ocap_fnc_extension;
+[":EVENT:", [ocap_endFrameNo, "endMission", [str _sideWon, SQF2JSON(_description)]]] call ocap_fnc_extension;
 
 [":SAVE:", [worldName, briefingName, getMissionConfigValue ["author", ""], ocap_frameCaptureDelay, ocap_endFrameNo]] call ocap_fnc_extension;
