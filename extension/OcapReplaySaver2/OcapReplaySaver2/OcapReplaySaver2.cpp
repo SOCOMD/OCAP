@@ -415,7 +415,7 @@ int commandStart(const char **args, int argsCnt) {
 
 	is_writing = true;
 	j["worldName"] = json::parse(args[0]);
-	j["missionName"] = json::parse(args[1]);
+	j["missionName"] = json::string_t(prepStr(args[1]));
 	j["missionAuthor"] = json::parse(args[2]);
 	j["captureDelay"] = json::parse(args[3]);
 
