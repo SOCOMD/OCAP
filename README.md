@@ -5,7 +5,10 @@
 ![OCAP Screenshot](https://i.imgur.com/67L12wKl.jpg)
 
 **[Live Web Demo](http://www.3commandobrigade.com:8080/ocap-demo/)**
-**[RED-BEAR](http://ocap.red-bear.ru/)**
+
+**[RED-BEAR Demo](http://ocap.red-bear.ru/)**
+
+**[Maps for OCAP](https://drive.google.com/drive/folders/1QU2-yVOmNMDs6i4EN49kGsOFqGkL6O48)**
 
 ## What is it?
 OCAP is a **game-changing** tool that allows the recording and playback of operations on an interactive (web-based) map.
