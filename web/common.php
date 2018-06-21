@@ -19,7 +19,7 @@ $statServerUrl = "http://138.201.116.116/ocap/remote/";
 // Send cURL request to remote server
 // $url should not include '/ocap/remote/' and should not have a leading '/'
 function curlRemote($url, $postFields = array()) {
-
+/*
 	global $statServerUrl;
 	$url = $statServerUrl . $url;
 
@@ -37,7 +37,7 @@ function curlRemote($url, $postFields = array()) {
 	curl_close($curl);
 
 	return $result;
-
+*/
 }
 
 function print_debug($var) {
