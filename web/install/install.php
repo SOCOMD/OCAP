@@ -13,11 +13,12 @@ if ($_POST['agree']) {
 	$root = str_replace(basename($root), "", $root);
 	$root = str_replace("install/", "", $root);
 	print_debug("Root location: " . $root);
-	$ip = file_get_contents($statServerUrl . 'ip.php');
+	// $ip = file_get_contents($statServerUrl . 'ip.php');
 	$groupName = $_POST['groupName'];
 
 	// == Contact stats server to log this server's details
 	// Set POST vars
+	/*
 	$fields = array(
 		'option' => "create",
 		'name' => $groupName,
@@ -25,19 +26,19 @@ if ($_POST['agree']) {
 		'root' => $root,
 		'ip' => $ip
 	);
-
+	*/
 	// Contact stats server
 	// Please do not modify this as these stats help me get a job. Thank-you! :)
-	$result = curlRemote("stats-manager.php", $fields);
-	print_debug("Result: " . $result);
+	// $result = curlRemote("stats-manager.php", $fields);
+	// print_debug("Result: " . $result);
 
-	$id = intval($result);
-
+	// $id = intval($result);
+/*
 	if ($id == 0) {
 		echo "Error: Failed adding this server to statistics database (invalid ID returned).<br/>";
 		exit;
 	}
-
+*/
 	// == Create/initialise local database + store server's details
 	try {
 		$db = new PDO('sqlite:../data/data.db'); // Create local database
@@ -79,9 +80,9 @@ if ($_POST['agree']) {
 				0,
 				0
 			)
-		", $id, $groupName, $ip, $host, $root));
+		", 0, $groupName, $_SERVER['SERVER_ADDR'], $host, $root));
 
-		print_debug("ID: " . $id);
+		// print_debug("ID: " . $id);
 	} catch (PDOExecption $e) {
 		echo "Exception: ".$e->getMessage();
 	}

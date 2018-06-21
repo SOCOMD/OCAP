@@ -14,7 +14,7 @@ $lang = "ru";
 const VERSION = "2.2.1";
 
 // Please do not modify this as these stats help me get a job. Thank-you! :)
-$statServerUrl = "http://138.201.116.116/ocap/remote/";
+// $statServerUrl = "http://138.201.116.116/ocap/remote/";
 
 // Send cURL request to remote server
 // $url should not include '/ocap/remote/' and should not have a leading '/'

@@ -36,6 +36,8 @@ $db = NULL;
 
 // Contact stats server to increment view count
 // Please do not modify this as these stats help me get a job. Thank-you! :)
+// Sometimes the server does not respond, sorry
+/*
 $result = curlRemote("stats-manager.php", array(
 	"option" => "increment_view_count",
 	"server_id" => $id
@@ -52,6 +54,7 @@ if ($result != "") {
 	echo sprintf("<script>alert(\"%s\")</script>", $result);
 	print_debug($result);
 }
+*/
 ?>
 <!DOCTYPE html>
 <html>
