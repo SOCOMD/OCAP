@@ -1,6 +1,6 @@
 #define REQUIRED_VERSION	2.0
 #define LOG(_args)			[":LOG:", _args] call ocap_fnc_extension
-#define BOOL(_cond)			(parseNumber (_cond))
+#define BOOL(_cond)			([0,1] select (_cond))
 #define SQF2JSON(_str)		([_str, """", "'"] call CBA_fnc_replace)
 
 #define ARR2(_arg1, _arg2) [_arg1, _arg2]
