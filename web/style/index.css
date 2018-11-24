@@ -6,7 +6,7 @@ html, body, #map {
 	font-family: Roboto, Arial, sans-serif;
 	color: #F2F2F2;
 	overflow: hidden;
-	font-size: 14px;
+	font-size: 13px;
 	cursor: default;
 }
 
@@ -99,13 +99,12 @@ html, body, #map {
 }
 
 #sideWest, #sideEast, #sideGuer, #sideCiv {
-	display : inline-block;
-	width : calc(25% - 3px);
+	display : none;
+	width : 45px;
 	height : 50px;
 	cursor : pointer;
 	text-align: center;
 	padding-top: 13px;
-	vertical-align: top;
 }
 
 #rightPanel .panelContent {

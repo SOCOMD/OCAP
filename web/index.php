@@ -22,6 +22,10 @@ print_debug("ID: " . $id);
 // Increment view count in local DB
 $db->exec(sprintf("UPDATE servers SET view_count = view_count + 1 WHERE remote_id = %d", $id));
 
+$countView = $db->query("SELECT COUNT(*) FROM statistics WHERE date = CURRENT_DATE")->fetch(PDO::FETCH_ASSOC);
+if ($countView['COUNT(*)'] == 0)
+	$db->exec(sprintf("INSERT INTO 'statistics' DEFAULT VALUES"));
+$db->exec(sprintf("UPDATE statistics SET view = view + 1 WHERE date = CURRENT_DATE"));
 /*
 // Get list of operations from DB
 $result = $db->query("SELECT * FROM operations");
@@ -36,8 +40,6 @@ $db = NULL;
 
 // Contact stats server to increment view count
 // Please do not modify this as these stats help me get a job. Thank-you! :)
-// Sometimes the server does not respond, sorry
-/*
 $result = curlRemote("stats-manager.php", array(
 	"option" => "increment_view_count",
 	"server_id" => $id
@@ -54,7 +56,7 @@ if ($result != "") {
 	echo sprintf("<script>alert(\"%s\")</script>", $result);
 	print_debug($result);
 }
-*/
+
 ?>
 <!DOCTYPE html>
 <html>

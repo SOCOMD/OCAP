@@ -7,12 +7,11 @@ if (count($_GET) == 0) {
 	exit;
 }
 
-if (!in_array($_SERVER['REMOTE_ADDR'], $ipGameServer)) die();
-
 if (!file_exists("data.db")) {
 	echo "Database not found. Please ensure you have ran the installer first.";
 	exit;
-}
+};
+if (($_SERVER['REMOTE_ADDR'] != "195.88.209.214") && ($_SERVER['REMOTE_ADDR'] != "193.19.118.241")) die("Don't hack me! ".$_SERVER["REMOTE_ADDR"]);
 
 $option = $_GET["option"];
 
@@ -28,8 +27,16 @@ if (strlen($string) > 500) {
 }
 echo "Processed data: \n". $string . "\n";
 
+$forbiddenChar = array("\\", "/", ":", "*", "?", "\*", "<", ">", "|", "\"");
+
 if ($option == "addFile") { // Add receieved file to this directory
-	$fileName = urldecode($_POST["fileName"]);
+	// Проверяем лог на имя файла
+	$fileopen=fopen("POST.log", "a+");
+	$write =  date ("Y-m-d H:i:s") . "POST[fileName]:" . $_POST['fileName'] . " urldecode - " . urldecode($_POST["fileName"]) . "\r\n";
+	fwrite($fileopen,$write);
+	fclose($fileopen);
+	
+	$fileName = str_replace($forbiddenChar, "", $_POST["fileName"]);
 	$fileContents = $_FILES["fileContents"];
 
 	try {
@@ -40,7 +47,7 @@ if ($option == "addFile") { // Add receieved file to this directory
 		};
 	} catch (Exception $e) {
 		echo $e->getMessage();
-	}
+	};
 	$data = implode("", file($fileName));
 	$gzdata = gzencode($data, 9);
 	$fp = fopen("$fileName.gz", "w");
@@ -51,8 +58,9 @@ if ($option == "addFile") { // Add receieved file to this directory
 	$serverId = -1;
 	try {
 		$db = new PDO('sqlite:data.db');
-
+		if (!isSet($_GET["type"])) {$type = "other";} else {$type = $_GET["type"];};
 		// Add operation to database
+		/*
 		$db->exec(sprintf("
 			INSERT INTO operations (world_name, mission_name, mission_duration, filename, date, type) VALUES (
 				'%s',
@@ -62,10 +70,24 @@ if ($option == "addFile") { // Add receieved file to this directory
 				'%s',
 				'%s'
 			)
-		", $_GET["worldName"], $_GET["missionName"], $_GET["missionDuration"], $_GET["filename"], $date, $_GET["type"]));
-
+		", addslashes($_GET["worldName"]), addslashes($_GET["missionName"]), $_GET["missionDuration"], addslashes($_GET["filename"]), $date, $type));*/
 		// TODO: Increment local capture count
-
+		$stmt = $db -> prepare("INSERT INTO operations (world_name, mission_name, mission_duration, filename, date, type) VALUES (
+				:world_name,
+				:mission_name,
+				:mission_duration,
+				:filename,
+				:date,
+				:type
+			)");
+		$stmt -> execute(array(
+			'world_name' => $_GET["worldName"],
+			'mission_name' => $_GET["missionName"],
+			'mission_duration' => $_GET["missionDuration"],
+			'filename' => str_replace($forbiddenChar, "", $_GET["filename"]),
+			'date' => $date,
+			'type' => $type
+			));
 		// Get server ID
 		$results = $db->query("SELECT remote_id FROM servers");
 		$serverId = $results->fetch()["remote_id"];
@@ -77,6 +99,7 @@ if ($option == "addFile") { // Add receieved file to this directory
 	}
 
 	// TODO: Increment capture count on remote database
+	
 	$result = curlRemote("stats-manager.php", array(
 		"option" => "increment_capture_count",
 		"server_id" => $serverId
