@@ -60,6 +60,7 @@ TODO:
 #include <mutex>
 #include <atomic>
 #include <regex>
+#include <queue>
 
 #include <Windows.h>
 #include <direct.h>
@@ -297,155 +298,8 @@ std::string generateResultFileName(const std::string &name) {
 	return ss.str();
 }
 
-int commandMarkerCreate(const char **args, int argsCnt) {
-	COMMAND_CHECK_INPUT_PARAMETERS(11)
-	COMMAND_CHECK_WRITING_STATE
-
-	//создать новый маркер
-	if (j["Markers"].is_null()) {
-		j["Markers"] = json::array();
-	}
-	/* входные параметры
-	[0:_mname , 1: 0, 2 : swt_cfgMarkers_names select _type, 3: _mtext, 4: ocap_captureFrameNo, 5:-1, 6: _pl getVariable ["ocap_id", 0],
-	 7: call bis_fnc_colorRGBtoHTML, 8:[1,1], 9:side _pl call BIS_fnc_sideID, 10:_mpos]]
-	*/
 
 
-	json::string_t clr = json::string_t(removeAdd(prepStr(args[7]).c_str()));
-	if (clr == "any") {
-		clr = "000000";
-	}
-	json frameNo = json::parse(args[4]);
-	json a = json::array({json::parse(args[0]), json::parse(args[1]), json::parse(args[2]), json::string_t(prepStr(args[3])), frameNo, json::parse(args[5]), json::parse(args[6]),
-		clr, json::parse(args[8]), json::parse(args[9]), json::array() });
-	json coordRecord = json::array({ frameNo, json::parse(args[10]), json::parse(args[1])});
-	a[10].push_back(coordRecord);
-	j["Markers"].push_back(a);
-	return 0;
-}
-
-int commandMarkerDelete(const char **args, int argsCnt) {
-	//найти старый маркер и поставить ему текущий номер фрейма
-	COMMAND_CHECK_INPUT_PARAMETERS(2)
-	COMMAND_CHECK_WRITING_STATE
-
-	json mname = json::parse(args[0]);
-	auto it = find_if(j["Markers"].rbegin(), j["Markers"].rend(), [&](const auto & i) { return i[0] == mname; });
-	if (it == j["Markers"].rend()) {
-		LOG(ERROR) << "No such marker" << args[0];
-		return 7;
-	}
-	
-	(*it)[5] = json::parse(args[1]);
-	return 0;
-}
-
-int commandMarkerMove(const char **args, int argsCnt) {
-	COMMAND_CHECK_INPUT_PARAMETERS(3)
-	COMMAND_CHECK_WRITING_STATE
-
-	json mname = json::parse(args[0]); // имя маркера
-	auto it = find_if(j["Markers"].rbegin(), j["Markers"].rend(), [&](const auto & i) { return i[0] == mname; });
-	if (it == j["Markers"].rend()) {
-		LOG(ERROR) << "No such marker" << args[0];
-		return 7;
-	}
-	json coordRecord = json::array({ json::parse(args[1]), json::parse(args[2]), 0});
-	// ищем последнюю запись с таким же фреймом
-	int frame = coordRecord[0].get<int>();
-	auto coord = find_if((*it)[10].rbegin(), (*it)[10].rend(), [&](const auto & i) { return i[0] == frame; });
-	if (coord == (*it)[10].rend()) {
-		// такой записи нет
-		LOG(TRACE) << "No marker coord on this frame. Adding new." << coordRecord;
-		(*it)[10].push_back(coordRecord);
-	}
-	else
-	{
-		LOG(TRACE) << "Record on this frame already exists." << *coord << "replacing it with new params" << coordRecord;
-		*coord = coordRecord;
-	}
-	return 0;
-}
-
-int commandLog(const char **args, int argsCnt) {
-	stringstream ss;
-	for (int i = 0; i < argsCnt; i++)
-		 ss << args[i] << " ";
-	CLOG(WARNING, "ext") << ss.str();
-	return 0;
-}
-
-int commandFired(const char ** args, int argsCnt)
-{
-	COMMAND_CHECK_INPUT_PARAMETERS(3)
-	COMMAND_CHECK_WRITING_STATE
-
-
-	int id = stoi(args[0]);
-	if (!j["entities"][id].is_null()) {
-		j["entities"][id]["framesFired"].push_back(json::array({ json::parse(args[1]), json::parse(args[2])}));
-	}
-	else {
-		ERROR_THROW(E_INCORRECT_COMMAND_PARAM, 0)
-		return 1;
-	}
-
-	return 0;
-}
-
-int commandStart(const char **args, int argsCnt) {
-	COMMAND_CHECK_INPUT_PARAMETERS(4)
-
-	if (is_writing) {
-		LOG(WARNING) << ":START: while writing mission. Clearing old data.";
-		commandClear(args, argsCnt);
-	}
-	LOG(INFO) << "Closing old log. Starting record." << args[0] << args[1] << args[2] << args[3];
-
-	auto loggerDefault = el::Loggers::getLogger("default");
-	auto loggerExt = el::Loggers::getLogger("ext");
-
-	if (loggerDefault && loggerExt) {
-
-		loggerDefault->reconfigure();
-		loggerExt->reconfigure();
-	}
-	else {
-		LOG(ERROR) << "Problem with reconfiguring loggers!";
-	}
-
-	is_writing = true;
-	j["worldName"] = json::parse(args[0]);
-	j["missionName"] = json::string_t(prepStr(args[1]));
-	j["missionAuthor"] = json::parse(args[2]);
-	j["captureDelay"] = json::parse(args[3]);
-
-	LOG(INFO) << "Starting record." << args[0] << args[1] << args[2] << args[3];
-	CLOG(INFO, "ext") << "Starting record." << args[0] << args[1] << args[2] << args[3];
-	return 0;
-}
-
-int commandNewUnit(const char **args, int argsCnt) {
-	COMMAND_CHECK_INPUT_PARAMETERS(6)
-	COMMAND_CHECK_WRITING_STATE
-
-	json unit{ { "startFrameNum" , json::parse(args[0]) },{ "type" , "unit"},{ "id", json::parse(args[1]) },{ "name", json::string_t(prepStr(args[2])) },{ "group", json::parse(args[3]) },{ "side", json::parse(args[4]) },{ "isPlayer", json::parse(args[5]) } };
-	unit["positions"] = json::array();
-	unit["framesFired"] = json::array();
-	j["entities"].push_back(unit);
-	return 0;
-}
-
-int commandNewVeh(const char **args, int argsCnt) {
-	COMMAND_CHECK_INPUT_PARAMETERS(4)
-	COMMAND_CHECK_WRITING_STATE
-
-	json unit{ { "startFrameNum" , json::parse(args[0]) },{ "type" , "vehicle" },{ "id", json::parse(args[1]) },{ "name", json::string_t(prepStr(args[3])) },{ "class", json::parse(args[2]) } };
-	unit["positions"] = json::array();
-	unit["framesFired"] = json::array();
-	j["entities"].push_back(unit);
-	return 0;
-}
 
 
 
@@ -620,11 +474,165 @@ void curlActions(string worldName, string missionName, string duration, string f
 
 #pragma endregion
 
+#pragma region Commands Handlers
+
+int commandMarkerCreate(const char **args, int argsCnt) {
+	COMMAND_CHECK_INPUT_PARAMETERS(11)
+		COMMAND_CHECK_WRITING_STATE
+
+		//создать новый маркер
+		if (j["Markers"].is_null()) {
+			j["Markers"] = json::array();
+		}
+	/* входные параметры
+	[0:_mname , 1: 0, 2 : swt_cfgMarkers_names select _type, 3: _mtext, 4: ocap_captureFrameNo, 5:-1, 6: _pl getVariable ["ocap_id", 0],
+	7: call bis_fnc_colorRGBtoHTML, 8:[1,1], 9:side _pl call BIS_fnc_sideID, 10:_mpos]]
+	*/
+
+
+	json::string_t clr = json::string_t(removeAdd(prepStr(args[7]).c_str()));
+	if (clr == "any") {
+		clr = "000000";
+	}
+	json frameNo = json::parse(args[4]);
+	json a = json::array({ json::parse(args[0]), json::parse(args[1]), json::parse(args[2]), json::string_t(prepStr(args[3])), frameNo, json::parse(args[5]), json::parse(args[6]),
+		clr, json::parse(args[8]), json::parse(args[9]), json::array() });
+	json coordRecord = json::array({ frameNo, json::parse(args[10]), json::parse(args[1]) });
+	a[10].push_back(coordRecord);
+	j["Markers"].push_back(a);
+	return 0;
+}
+
+int commandMarkerDelete(const char **args, int argsCnt) {
+	//найти старый маркер и поставить ему текущий номер фрейма
+	COMMAND_CHECK_INPUT_PARAMETERS(2)
+		COMMAND_CHECK_WRITING_STATE
+
+		json mname = json::parse(args[0]);
+	auto it = find_if(j["Markers"].rbegin(), j["Markers"].rend(), [&](const auto & i) { return i[0] == mname; });
+	if (it == j["Markers"].rend()) {
+		LOG(ERROR) << "No such marker" << args[0];
+		return 7;
+	}
+
+	(*it)[5] = json::parse(args[1]);
+	return 0;
+}
+
+int commandMarkerMove(const char **args, int argsCnt) {
+	COMMAND_CHECK_INPUT_PARAMETERS(3)
+		COMMAND_CHECK_WRITING_STATE
+
+		json mname = json::parse(args[0]); // имя маркера
+	auto it = find_if(j["Markers"].rbegin(), j["Markers"].rend(), [&](const auto & i) { return i[0] == mname; });
+	if (it == j["Markers"].rend()) {
+		LOG(ERROR) << "No such marker" << args[0];
+		return 7;
+	}
+	json coordRecord = json::array({ json::parse(args[1]), json::parse(args[2]), 0 });
+	// ищем последнюю запись с таким же фреймом
+	int frame = coordRecord[0].get<int>();
+	auto coord = find_if((*it)[10].rbegin(), (*it)[10].rend(), [&](const auto & i) { return i[0] == frame; });
+	if (coord == (*it)[10].rend()) {
+		// такой записи нет
+		LOG(TRACE) << "No marker coord on this frame. Adding new." << coordRecord;
+		(*it)[10].push_back(coordRecord);
+	}
+	else
+	{
+		LOG(TRACE) << "Record on this frame already exists." << *coord << "replacing it with new params" << coordRecord;
+		*coord = coordRecord;
+	}
+	return 0;
+}
+
+int commandLog(const char **args, int argsCnt) {
+	stringstream ss;
+	for (int i = 0; i < argsCnt; i++)
+		ss << args[i] << " ";
+	CLOG(WARNING, "ext") << ss.str();
+	return 0;
+}
+
+int commandFired(const char ** args, int argsCnt)
+{
+	COMMAND_CHECK_INPUT_PARAMETERS(3)
+		COMMAND_CHECK_WRITING_STATE
+
+
+		int id = stoi(args[0]);
+	if (!j["entities"][id].is_null()) {
+		j["entities"][id]["framesFired"].push_back(json::array({ json::parse(args[1]), json::parse(args[2]) }));
+	}
+	else {
+		ERROR_THROW(E_INCORRECT_COMMAND_PARAM, 0)
+			return 1;
+	}
+
+	return 0;
+}
+
+int commandStart(const char **args, int argsCnt) {
+	COMMAND_CHECK_INPUT_PARAMETERS(4)
+
+		if (is_writing) {
+			LOG(WARNING) << ":START: while writing mission. Clearing old data.";
+			commandClear(args, argsCnt);
+		}
+	LOG(INFO) << "Closing old log. Starting record." << args[0] << args[1] << args[2] << args[3];
+
+	auto loggerDefault = el::Loggers::getLogger("default");
+	auto loggerExt = el::Loggers::getLogger("ext");
+
+	if (loggerDefault && loggerExt) {
+
+		loggerDefault->reconfigure();
+		loggerExt->reconfigure();
+	}
+	else {
+		LOG(ERROR) << "Problem with reconfiguring loggers!";
+	}
+
+	is_writing = true;
+	j["worldName"] = json::parse(args[0]);
+	j["missionName"] = json::string_t(prepStr(args[1]));
+	j["missionAuthor"] = json::parse(args[2]);
+	j["captureDelay"] = json::parse(args[3]);
+
+	LOG(INFO) << "Starting record." << args[0] << args[1] << args[2] << args[3];
+	CLOG(INFO, "ext") << "Starting record." << args[0] << args[1] << args[2] << args[3];
+	return 0;
+}
+
+int commandNewUnit(const char **args, int argsCnt) {
+	COMMAND_CHECK_INPUT_PARAMETERS(6)
+		COMMAND_CHECK_WRITING_STATE
+
+		json unit { { "startFrameNum", json::parse(args[0]) }, { "type" , "unit" }, { "id", json::parse(args[1]) }, { "name", json::string_t(prepStr(args[2])) }, { "group", json::parse(args[3]) }, { "side", json::parse(args[4]) }, { "isPlayer", json::parse(args[5]) }
+	};
+	unit["positions"] = json::array();
+	unit["framesFired"] = json::array();
+	j["entities"].push_back(unit);
+	return 0;
+}
+
+int commandNewVeh(const char **args, int argsCnt) {
+	COMMAND_CHECK_INPUT_PARAMETERS(4)
+		COMMAND_CHECK_WRITING_STATE
+
+		json unit { { "startFrameNum", json::parse(args[0]) }, { "type" , "vehicle" }, { "id", json::parse(args[1]) }, { "name", json::string_t(prepStr(args[3])) }, { "class", json::parse(args[2]) }
+	};
+	unit["positions"] = json::array();
+	unit["framesFired"] = json::array();
+	j["entities"].push_back(unit);
+	return 0;
+}
+
 
 int commandSave(const char **args, int argsCnt) {
 	COMMAND_CHECK_INPUT_PARAMETERS(5)
-	COMMAND_CHECK_WRITING_STATE
-	LOG(INFO) << args[0] << args[1] << args[2] << args[3] << args[4];
+		COMMAND_CHECK_WRITING_STATE
+		LOG(INFO) << args[0] << args[1] << args[2] << args[3] << args[4];
 
 	j["worldName"] = json::parse(args[0]);
 	j["missionName"] = json::string_t(prepStr(args[1]));
@@ -645,7 +653,7 @@ int commandSave(const char **args, int argsCnt) {
 int commandClear(const char **args, int argsCnt)
 {
 	COMMAND_CHECK_WRITING_STATE
-	LOG(INFO) << "CLEAR";
+		LOG(INFO) << "CLEAR";
 	j.clear();
 	is_writing = false;
 	return 0;
@@ -654,9 +662,9 @@ int commandClear(const char **args, int argsCnt)
 int commandUpdateUnit(const char **args, int argsCnt)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(7)
-	COMMAND_CHECK_WRITING_STATE
-	
-	int id = stoi(args[0]);
+		COMMAND_CHECK_WRITING_STATE
+
+		int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {
 		j["entities"][id]["positions"].push_back(json::array({ json::parse(args[1]), json::parse(args[2]),
 			json::parse(args[3]), json::parse(args[4]), json::string_t(prepStr(args[5])), json::parse(args[6]) }));
@@ -664,16 +672,16 @@ int commandUpdateUnit(const char **args, int argsCnt)
 	else {
 		ERROR_THROW(E_INCORRECT_COMMAND_PARAM, 0)
 	}
-	
+
 	return 0;
 }
 
 int commandUpdateVeh(const char **args, int argsCnt)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(5)
-	COMMAND_CHECK_WRITING_STATE
+		COMMAND_CHECK_WRITING_STATE
 
-	int id = stoi(args[0]);
+		int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {
 		j["entities"][id]["positions"].push_back(json::array({ json::parse(args[1]), json::parse(args[2]),
 			json::parse(args[3]), json::parse(args[4]) }));
@@ -688,9 +696,9 @@ int commandUpdateVeh(const char **args, int argsCnt)
 int commandEvent(const char **args, int argsCnt)
 {
 	COMMAND_CHECK_WRITING_STATE
-	if (argsCnt < 3) {
-		ERROR_THROW(E_NUMBER_ARGS_VAR, argsCnt, "<3")
-	}
+		if (argsCnt < 3) {
+			ERROR_THROW(E_NUMBER_ARGS_VAR, argsCnt, "<3")
+		}
 	json arr = json::array();
 	for (int i = 0; i < argsCnt; i++) {
 		arr.push_back(json::parse(args[i]));
@@ -698,6 +706,10 @@ int commandEvent(const char **args, int argsCnt)
 	j["events"].push_back(arr);
 	return 0;
 }
+
+
+
+#pragma endregion
 
 void initialize_logger(bool forcelog = false, int verb_level = 0) {
 	bool file_exists = forcelog;
