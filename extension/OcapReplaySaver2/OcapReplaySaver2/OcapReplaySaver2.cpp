@@ -27,7 +27,7 @@ v 3.0.7.6 2018-01-21 Zealot Теперь ошибки обрабатываютс
 v 3.0.8.0 2018-01-21 Zealot При команде :START: происходит реконфигурация логгера и он начинает писать в новый файл
 v 3.0.8.1 2018-06-16 Zealot При команде SAVE если в названии миссии есть кавычки выкидывается исключение
 v 3.0.8.2 2018-06-18 Zealot Финальный фикс проблемы с именем миссии
-v 4.0.0.0 2018-11-26 Zealot Test version, worker threads variants
+v 4.0.0.1 2018-11-26 Zealot Test version, worker threads variants
 
 TODO:
 - сжатие данных
@@ -36,7 +36,7 @@ TODO:
 
 */
 
-#define CURRENT_VERSION "4.0.0.0"
+#define CURRENT_VERSION "4.0.0.1"
 
 #pragma endregion
 
@@ -95,20 +95,20 @@ TODO:
 
 using namespace std;
 
-int commandEvent(vector<string> args);
-int commandNewUnit(vector<string> args);
-int commandNewVeh(vector<string> args);
-int commandSave(vector<string> args);
-int commandUpdateUnit(vector<string> args);
-int commandUpdateVeh(vector<string> args);
-int commandClear(vector<string> args);
-int commandLog(vector<string> args);
-int commandStart(vector<string> args);
-int commandFired(vector<string> args);
+int commandEvent(const vector<string> &args);
+int commandNewUnit(const vector<string> &args);
+int commandNewVeh(const vector<string> &args);
+int commandSave(const vector<string> &args);
+int commandUpdateUnit(const vector<string> &args);
+int commandUpdateVeh(const vector<string> &args);
+int commandClear(const vector<string> &args);
+int commandLog(const vector<string> &args);
+int commandStart(const vector<string> &args);
+int commandFired(const vector<string> &args);
 
-int commandMarkerCreate(vector<string> args);
-int commandMarkerDelete(vector<string> args);
-int commandMarkerMove(vector<string> args);
+int commandMarkerCreate(const vector<string> &args);
+int commandMarkerDelete(const vector<string> &args);
+int commandMarkerMove(const vector<string> &args);
 
 namespace {
 	
@@ -123,7 +123,7 @@ namespace {
 
 
 
-	std::unordered_map<std::string, std::function<int(vector<string>)> > dll_commands = {
+	std::unordered_map<std::string, std::function<int(const vector<string> &)> > dll_commands = {
 		{ CMD_NEW_VEH,			commandNewVeh },
 		{ CMD_NEW_UNIT,			commandNewUnit },
 		{ CMD_CLEAR,			commandClear },
@@ -564,7 +564,7 @@ void curlActions(string worldName, string missionName, string duration, string f
 
 #pragma region Commands Handlers
 
-int commandMarkerCreate(vector<string> args) {
+int commandMarkerCreate(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(11)
 		COMMAND_CHECK_WRITING_STATE
 
@@ -591,7 +591,7 @@ int commandMarkerCreate(vector<string> args) {
 	return 0;
 }
 
-int commandMarkerDelete(vector<string> args) {
+int commandMarkerDelete(const vector<string> &args) {
 	//найти старый маркер и поставить ему текущий номер фрейма
 	COMMAND_CHECK_INPUT_PARAMETERS(2)
 		COMMAND_CHECK_WRITING_STATE
@@ -607,7 +607,7 @@ int commandMarkerDelete(vector<string> args) {
 	return 0;
 }
 
-int commandMarkerMove(vector<string> args) {
+int commandMarkerMove(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(3)
 		COMMAND_CHECK_WRITING_STATE
 
@@ -634,7 +634,7 @@ int commandMarkerMove(vector<string> args) {
 	return 0;
 }
 
-int commandLog(vector<string> args) {
+int commandLog(const vector<string> &args) {
 	stringstream ss;
 	for (int i = 0; i < args.size(); i++)
 		ss << args[i] << " ";
@@ -642,7 +642,7 @@ int commandLog(vector<string> args) {
 	return 0;
 }
 
-int commandFired(vector<string> args)
+int commandFired(const vector<string> &args)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(3)
 		COMMAND_CHECK_WRITING_STATE
@@ -660,7 +660,7 @@ int commandFired(vector<string> args)
 	return 0;
 }
 
-int commandStart(vector<string> args) {
+int commandStart(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(4)
 
 		if (is_writing) {
@@ -692,7 +692,7 @@ int commandStart(vector<string> args) {
 	return 0;
 }
 
-int commandNewUnit(vector<string> args) {
+int commandNewUnit(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(6)
 		COMMAND_CHECK_WRITING_STATE
 
@@ -707,7 +707,7 @@ int commandNewUnit(vector<string> args) {
 	return 0;
 }
 
-int commandNewVeh(vector<string> args) {
+int commandNewVeh(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(4)
 		COMMAND_CHECK_WRITING_STATE
 
@@ -723,7 +723,7 @@ int commandNewVeh(vector<string> args) {
 }
 
 
-int commandSave(vector<string> args) {
+int commandSave(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(5)
 		COMMAND_CHECK_WRITING_STATE
 		LOG(INFO) << args[0] << args[1] << args[2] << args[3] << args[4];
@@ -744,7 +744,7 @@ int commandSave(vector<string> args) {
 }
 
 
-int commandClear(vector<string> args)
+int commandClear(const vector<string> &args)
 {
 	COMMAND_CHECK_WRITING_STATE
 		LOG(INFO) << "CLEAR";
@@ -753,7 +753,7 @@ int commandClear(vector<string> args)
 	return 0;
 }
 
-int commandUpdateUnit(vector<string> args)
+int commandUpdateUnit(const vector<string> &args)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(7)
 		COMMAND_CHECK_WRITING_STATE
@@ -770,7 +770,7 @@ int commandUpdateUnit(vector<string> args)
 	return 0;
 }
 
-int commandUpdateVeh(vector<string> args)
+int commandUpdateVeh(const vector<string> &args)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(5)
 		COMMAND_CHECK_WRITING_STATE
@@ -787,7 +787,7 @@ int commandUpdateVeh(vector<string> args)
 	return 0;
 }
 
-int commandEvent(vector<string> args)
+int commandEvent(const vector<string> &args)
 {
 	COMMAND_CHECK_WRITING_STATE
 		if (args.size() < 3) {
@@ -874,7 +874,7 @@ void __stdcall RVExtension(char *output, int outputSize, const char *function)
 
 int __stdcall RVExtensionArgs(char *output, int outputSize, const char *function, const char **args, int argsCnt)
 {
-	int res = 1;
+	int res = 0;
 	if (config.traceLog) {
 		stringstream ss;
 		ss << function << " " << argsCnt << ":[";
@@ -887,9 +887,7 @@ int __stdcall RVExtensionArgs(char *output, int outputSize, const char *function
 		LOG(TRACE) << ss.str();
 	}
 
-
 	try {
-
 		auto fn = dll_commands.find(function);
 		if (fn == dll_commands.end()) {
 			ERROR_THROW(E_FUN_NOT_SUPPORTED, function)
@@ -909,10 +907,6 @@ int __stdcall RVExtensionArgs(char *output, int outputSize, const char *function
 			command_cond.notify_one();
 		}
 	}
-	catch (const ocapSaverException &e) {
-		res = e.getErrorCode();
-		LOG(ERROR) << "E:" << res << e.what();
-	}
 	catch (const exception &e) {
 		res = 1;
 		LOG(ERROR) << "Exception: " << e.what();
@@ -922,21 +916,6 @@ int __stdcall RVExtensionArgs(char *output, int outputSize, const char *function
 		LOG(ERROR) << "Exception: Unknown";
 	}
 
-	if (res != 0) {
-		stringstream ss;
-		ss << "Return: " << res << " parameters were: " << function << " ";
-		ss << argsCnt << ":[";
-		for (int i = 0; i < argsCnt; i++) {
-			if (i > 0)
-				ss << "::";
-			ss << args[i];
-		}
-		ss << "]";
-		LOG(ERROR) << ss.str();
-		strncpy_s(output, outputSize, MSG_ERROR_COMMAND, _TRUNCATE);
-	}
-
-	el::Loggers::flushAll();
 	return res;
 }
 
