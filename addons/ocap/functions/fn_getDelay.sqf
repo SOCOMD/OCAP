@@ -7,7 +7,7 @@
 */
 #include "\ocap\script_macros.hpp"
 private "_sleep";
-isNil {
+//isNil {
 	_relativelyTime = time - ocap_startTime;
 	_sleep = (ocap_captureFrameNo + 1) * ocap_frameCaptureDelay - _relativelyTime;
 	if ((ocap_captureFrameNo % 10) isEqualTo 0) then {
@@ -17,5 +17,5 @@ isNil {
 		LOG(ARR3("ERROR: Frame delay is negative", ocap_captureFrameNo, _sleep));
 		_sleep = 0;
 	};
-};
+//};
 _sleep

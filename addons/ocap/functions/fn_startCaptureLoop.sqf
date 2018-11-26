@@ -28,7 +28,7 @@ ocap_startTime = time;
 LOG(ARR3(__FILE__, "ocap_capture start, time:", ocap_startTime));
 private _id = 0;
 while {ocap_capture} do {
-	isNil {
+	//isNil {
 		{
 			if !(_x getVariable ["ocap_isInitialised", false]) then {
 				if (_x isKindOf "Logic") exitWith {
@@ -107,7 +107,7 @@ while {ocap_capture} do {
 			};
 			false
 		} count vehicles;
-	};
+	//};
 	sleep (call ocap_fnc_getDelay);
 	ocap_captureFrameNo = ocap_captureFrameNo + 1;
 };
