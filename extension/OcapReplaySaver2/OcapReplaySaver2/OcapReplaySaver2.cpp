@@ -27,6 +27,7 @@ v 3.0.7.6 2018-01-21 Zealot Теперь ошибки обрабатываютс
 v 3.0.8.0 2018-01-21 Zealot При команде :START: происходит реконфигурация логгера и он начинает писать в новый файл
 v 3.0.8.1 2018-06-16 Zealot При команде SAVE если в названии миссии есть кавычки выкидывается исключение
 v 3.0.8.2 2018-06-18 Zealot Финальный фикс проблемы с именем миссии
+v 4.0.0.0 2018-11-26 Zealot Test version, worker threads variants
 
 TODO:
 - сжатие данных
@@ -35,7 +36,7 @@ TODO:
 
 */
 
-#define CURRENT_VERSION "3.0.8.2"
+#define CURRENT_VERSION "4.0.0.0"
 
 #pragma endregion
 
@@ -61,6 +62,7 @@ TODO:
 #include <atomic>
 #include <regex>
 #include <queue>
+#include <tuple>
 
 #include <Windows.h>
 #include <direct.h>
@@ -93,27 +95,35 @@ TODO:
 
 using namespace std;
 
-int commandEvent(const char **args, int argsCnt);
-int commandNewUnit(const char **args, int argsCnt);
-int commandNewVeh(const char **args, int argsCnt);
-int commandSave(const char **args, int argsCnt);
-int commandUpdateUnit(const char **args, int argsCnt);
-int commandUpdateVeh(const char **args, int argsCnt);
-int commandClear(const char **args, int argsCnt);
-int commandLog(const char **args, int argsCnt);
-int commandStart(const char **args, int argsCnt);
-int commandFired(const char **args, int argsCnt);
+int commandEvent(vector<string> args);
+int commandNewUnit(vector<string> args);
+int commandNewVeh(vector<string> args);
+int commandSave(vector<string> args);
+int commandUpdateUnit(vector<string> args);
+int commandUpdateVeh(vector<string> args);
+int commandClear(vector<string> args);
+int commandLog(vector<string> args);
+int commandStart(vector<string> args);
+int commandFired(vector<string> args);
 
-int commandMarkerCreate(const char **args, int argsCnt);
-int commandMarkerDelete(const char **args, int argsCnt);
-int commandMarkerMove(const char **args, int argsCnt);
+int commandMarkerCreate(vector<string> args);
+int commandMarkerDelete(vector<string> args);
+int commandMarkerMove(vector<string> args);
 
 namespace {
 	
 
 	using json = nlohmann::json;
 
-	std::unordered_map<std::string, std::function<int(const char **, int)> > commands = {
+	thread command_thread;
+	queue<tuple<string, vector<string> > > commands;
+	mutex command_mutex;
+	condition_variable command_cond;
+	bool command_thread_shutdown = false;
+
+
+
+	std::unordered_map<std::string, std::function<int(vector<string>)> > dll_commands = {
 		{ CMD_NEW_VEH,			commandNewVeh },
 		{ CMD_NEW_UNIT,			commandNewUnit },
 		{ CMD_CLEAR,			commandClear },
@@ -173,7 +183,7 @@ namespace {
 	};
 
 #define ERROR_THROW(E, ...) if(true){snprintf(errorMsg, ERROR_MSG_BUF_LEN, errors[E], ##__VA_ARGS__, __FUNCTION__, __LINE__);throw ocapSaverException(errorMsg, E);}
-#define COMMAND_CHECK_INPUT_PARAMETERS(N) if(argsCnt!=N){ERROR_THROW(E_NUMBER_ARG, argsCnt, N)}
+#define COMMAND_CHECK_INPUT_PARAMETERS(N) if(args.size()!=N){ERROR_THROW(E_NUMBER_ARG, args.size(), N)}
 #define COMMAND_CHECK_WRITING_STATE	if(!is_writing){ERROR_THROW(E_NOT_WRITING_STATE)}
 	
 	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
@@ -189,6 +199,82 @@ namespace {
 		int httpRequestTimeout = 120;
 		int traceLog = 0;
 	} config;
+}
+
+
+void command_loop() {
+	while (true) {
+		if (command_thread_shutdown)
+		{
+			LOG(INFO) << "Exit flag is set. Quiting command loop.";
+			return;
+		}
+		else {
+			unique_lock<mutex> lock(command_mutex);
+			command_cond.wait(lock, [] {return !commands.empty() || command_thread_shutdown; });
+			while (!commands.empty()) {
+				tuple<string, vector<string> > cur_command = std::move(commands.front());
+				commands.pop();
+				string function(std::move(std::get<0>(cur_command)));
+				vector<string> args(std::move(std::get<1>(cur_command)));
+				
+				int res=1;
+
+				if (config.traceLog) {
+					stringstream ss;
+					ss << function << " " << args.size() << ":[";
+					for (int i = 0; i < args.size(); i++) {
+						if (i > 0)
+							ss << "::";
+						ss << args[i];
+					}
+					ss << "]";
+					LOG(TRACE) << ss.str();
+				}
+
+
+				try {
+
+					auto fn = dll_commands.find(function);
+					if (fn == dll_commands.end()) {
+						ERROR_THROW(E_FUN_NOT_SUPPORTED, function)
+					}
+					else {
+						res = fn->second(args);
+
+					}
+				}
+				catch (const ocapSaverException &e) {
+					res = e.getErrorCode();
+					LOG(ERROR) << "E:" << res << e.what();
+				}
+				catch (const exception &e) {
+					res = 1;
+					LOG(ERROR) << "Exception: " << e.what();
+				}
+				catch (...) {
+					res = 1;
+					LOG(ERROR) << "Exception: Unknown";
+				}
+
+				if (res != 0) {
+					stringstream ss;
+					ss << "Return: " << res << " parameters were: " << function << " ";
+					ss << args.size() << ":[";
+					for (int i = 0; i < args.size(); i++) {
+						if (i > 0)
+							ss << "::";
+						ss << args[i];
+					}
+					ss << "]";
+					LOG(ERROR) << ss.str();
+				}
+
+				el::Loggers::flushAll();
+			}
+		}
+	}
+
 }
 
 string removeAdd(const char * c) {
@@ -383,6 +469,7 @@ void curlDbInsert(string b_url, string worldname, string missionName, string mis
 			ss << "&filename="; url = curl_easy_escape(curl, filename.c_str(), 0); ss << url;  curl_free(url);
 			curl_easy_setopt(curl, CURLOPT_URL, ss.str().c_str());
 			curl_easy_setopt(curl, CURLOPT_TIMEOUT, (long)timeout);
+			curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
 			res = curl_easy_perform(curl);
 			if (res != CURLE_OK)
 				LOG(ERROR) << "Curl error:" << curl_easy_strerror(res) << ss.str();
@@ -429,6 +516,7 @@ void curlUploadFile(string url, string file, string fileName, int timeout) {
 			curl_easy_setopt(curl, CURLOPT_TIMEOUT, (long)timeout);
 			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);
 			curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
+			curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
 
 			res = curl_easy_perform(curl);
 
@@ -476,7 +564,7 @@ void curlActions(string worldName, string missionName, string duration, string f
 
 #pragma region Commands Handlers
 
-int commandMarkerCreate(const char **args, int argsCnt) {
+int commandMarkerCreate(vector<string> args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(11)
 		COMMAND_CHECK_WRITING_STATE
 
@@ -490,46 +578,46 @@ int commandMarkerCreate(const char **args, int argsCnt) {
 	*/
 
 
-	json::string_t clr = json::string_t(removeAdd(prepStr(args[7]).c_str()));
+	json::string_t clr = json::string_t(removeAdd(prepStr(args[7].c_str()).c_str()));
 	if (clr == "any") {
 		clr = "000000";
 	}
-	json frameNo = json::parse(args[4]);
-	json a = json::array({ json::parse(args[0]), json::parse(args[1]), json::parse(args[2]), json::string_t(prepStr(args[3])), frameNo, json::parse(args[5]), json::parse(args[6]),
-		clr, json::parse(args[8]), json::parse(args[9]), json::array() });
-	json coordRecord = json::array({ frameNo, json::parse(args[10]), json::parse(args[1]) });
+	json frameNo = json::parse(args[4].c_str());
+	json a = json::array({ json::parse(args[0].c_str()), json::parse(args[1].c_str()), json::parse(args[2].c_str()), json::string_t(prepStr(args[3].c_str())), frameNo, json::parse(args[5].c_str()), json::parse(args[6].c_str()),
+		clr, json::parse(args[8].c_str()), json::parse(args[9].c_str()), json::array() });
+	json coordRecord = json::array({ frameNo, json::parse(args[10].c_str()), json::parse(args[1].c_str()) });
 	a[10].push_back(coordRecord);
 	j["Markers"].push_back(a);
 	return 0;
 }
 
-int commandMarkerDelete(const char **args, int argsCnt) {
+int commandMarkerDelete(vector<string> args) {
 	//найти старый маркер и поставить ему текущий номер фрейма
 	COMMAND_CHECK_INPUT_PARAMETERS(2)
 		COMMAND_CHECK_WRITING_STATE
 
-		json mname = json::parse(args[0]);
+		json mname = json::parse(args[0].c_str());
 	auto it = find_if(j["Markers"].rbegin(), j["Markers"].rend(), [&](const auto & i) { return i[0] == mname; });
 	if (it == j["Markers"].rend()) {
 		LOG(ERROR) << "No such marker" << args[0];
 		return 7;
 	}
 
-	(*it)[5] = json::parse(args[1]);
+	(*it)[5] = json::parse(args[1].c_str());
 	return 0;
 }
 
-int commandMarkerMove(const char **args, int argsCnt) {
+int commandMarkerMove(vector<string> args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(3)
 		COMMAND_CHECK_WRITING_STATE
 
-		json mname = json::parse(args[0]); // имя маркера
+		json mname = json::parse(args[0].c_str()); // имя маркера
 	auto it = find_if(j["Markers"].rbegin(), j["Markers"].rend(), [&](const auto & i) { return i[0] == mname; });
 	if (it == j["Markers"].rend()) {
 		LOG(ERROR) << "No such marker" << args[0];
 		return 7;
 	}
-	json coordRecord = json::array({ json::parse(args[1]), json::parse(args[2]), 0 });
+	json coordRecord = json::array({ json::parse(args[1].c_str()), json::parse(args[2].c_str()), 0 });
 	// ищем последнюю запись с таким же фреймом
 	int frame = coordRecord[0].get<int>();
 	auto coord = find_if((*it)[10].rbegin(), (*it)[10].rend(), [&](const auto & i) { return i[0] == frame; });
@@ -546,15 +634,15 @@ int commandMarkerMove(const char **args, int argsCnt) {
 	return 0;
 }
 
-int commandLog(const char **args, int argsCnt) {
+int commandLog(vector<string> args) {
 	stringstream ss;
-	for (int i = 0; i < argsCnt; i++)
+	for (int i = 0; i < args.size(); i++)
 		ss << args[i] << " ";
 	CLOG(WARNING, "ext") << ss.str();
 	return 0;
 }
 
-int commandFired(const char ** args, int argsCnt)
+int commandFired(vector<string> args)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(3)
 		COMMAND_CHECK_WRITING_STATE
@@ -562,7 +650,7 @@ int commandFired(const char ** args, int argsCnt)
 
 		int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {
-		j["entities"][id]["framesFired"].push_back(json::array({ json::parse(args[1]), json::parse(args[2]) }));
+		j["entities"][id]["framesFired"].push_back(json::array({ json::parse(args[1].c_str()), json::parse(args[2].c_str()) }));
 	}
 	else {
 		ERROR_THROW(E_INCORRECT_COMMAND_PARAM, 0)
@@ -572,12 +660,12 @@ int commandFired(const char ** args, int argsCnt)
 	return 0;
 }
 
-int commandStart(const char **args, int argsCnt) {
+int commandStart(vector<string> args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(4)
 
 		if (is_writing) {
 			LOG(WARNING) << ":START: while writing mission. Clearing old data.";
-			commandClear(args, argsCnt);
+			commandClear(args);
 		}
 	LOG(INFO) << "Closing old log. Starting record." << args[0] << args[1] << args[2] << args[3];
 
@@ -594,21 +682,24 @@ int commandStart(const char **args, int argsCnt) {
 	}
 
 	is_writing = true;
-	j["worldName"] = json::parse(args[0]);
-	j["missionName"] = json::string_t(prepStr(args[1]));
-	j["missionAuthor"] = json::parse(args[2]);
-	j["captureDelay"] = json::parse(args[3]);
+	j["worldName"] = json::parse(args[0].c_str());
+	j["missionName"] = json::string_t(prepStr(args[1].c_str()));
+	j["missionAuthor"] = json::parse(args[2].c_str());
+	j["captureDelay"] = json::parse(args[3].c_str());
 
 	LOG(INFO) << "Starting record." << args[0] << args[1] << args[2] << args[3];
 	CLOG(INFO, "ext") << "Starting record." << args[0] << args[1] << args[2] << args[3];
 	return 0;
 }
 
-int commandNewUnit(const char **args, int argsCnt) {
+int commandNewUnit(vector<string> args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(6)
 		COMMAND_CHECK_WRITING_STATE
 
-		json unit { { "startFrameNum", json::parse(args[0]) }, { "type" , "unit" }, { "id", json::parse(args[1]) }, { "name", json::string_t(prepStr(args[2])) }, { "group", json::parse(args[3]) }, { "side", json::parse(args[4]) }, { "isPlayer", json::parse(args[5]) }
+		json unit { { "startFrameNum", json::parse(args[0].c_str()) }, { "type" , "unit" },
+			  { "id", json::parse(args[1].c_str()) }, { "name", json::string_t(prepStr(args[2].c_str())) },
+			  { "group", json::parse(args[3].c_str()) }, { "side", json::parse(args[4].c_str()) },
+			  { "isPlayer", json::parse(args[5].c_str()) }
 	};
 	unit["positions"] = json::array();
 	unit["framesFired"] = json::array();
@@ -616,11 +707,14 @@ int commandNewUnit(const char **args, int argsCnt) {
 	return 0;
 }
 
-int commandNewVeh(const char **args, int argsCnt) {
+int commandNewVeh(vector<string> args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(4)
 		COMMAND_CHECK_WRITING_STATE
 
-		json unit { { "startFrameNum", json::parse(args[0]) }, { "type" , "vehicle" }, { "id", json::parse(args[1]) }, { "name", json::string_t(prepStr(args[3])) }, { "class", json::parse(args[2]) }
+		json unit { { "startFrameNum", json::parse(args[0].c_str()) },
+				  { "type" , "vehicle" }, { "id", json::parse(args[1].c_str()) },
+				  { "name", json::string_t(prepStr(args[3].c_str())) },
+				  { "class", json::parse(args[2].c_str()) }
 	};
 	unit["positions"] = json::array();
 	unit["framesFired"] = json::array();
@@ -629,28 +723,28 @@ int commandNewVeh(const char **args, int argsCnt) {
 }
 
 
-int commandSave(const char **args, int argsCnt) {
+int commandSave(vector<string> args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(5)
 		COMMAND_CHECK_WRITING_STATE
 		LOG(INFO) << args[0] << args[1] << args[2] << args[3] << args[4];
 
-	j["worldName"] = json::parse(args[0]);
-	j["missionName"] = json::string_t(prepStr(args[1]));
-	j["missionAuthor"] = json::parse(args[2]);
-	j["captureDelay"] = json::parse(args[3]);
-	j["endFrame"] = json::parse(args[4]);
+	j["worldName"] = json::parse(args[0].c_str());
+	j["missionName"] = json::string_t(prepStr(args[1].c_str()));
+	j["missionAuthor"] = json::parse(args[2].c_str());
+	j["captureDelay"] = json::parse(args[3].c_str());
+	j["endFrame"] = json::parse(args[4].c_str());
 
 	prepareMarkerFrames(j["endFrame"]);
 
 	string tName = saveCurrentReplayToTempFile();
 	string fname = generateResultFileName(j["missionName"].get<std::string>());
-	thread curlThread(curlActions, json::parse(args[0]), j["missionName"].get<std::string>(), to_string(stod(args[3]) * stod(args[4])), fname, tName);
-	curlThread.detach();
-	return commandClear(args, argsCnt);
+	curlActions(json::parse(args[0].c_str()), j["missionName"].get<std::string>(), to_string(stod(args[3]) * stod(args[4])), fname, tName);
+	
+	return commandClear(args);
 }
 
 
-int commandClear(const char **args, int argsCnt)
+int commandClear(vector<string> args)
 {
 	COMMAND_CHECK_WRITING_STATE
 		LOG(INFO) << "CLEAR";
@@ -659,15 +753,15 @@ int commandClear(const char **args, int argsCnt)
 	return 0;
 }
 
-int commandUpdateUnit(const char **args, int argsCnt)
+int commandUpdateUnit(vector<string> args)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(7)
 		COMMAND_CHECK_WRITING_STATE
 
 		int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {
-		j["entities"][id]["positions"].push_back(json::array({ json::parse(args[1]), json::parse(args[2]),
-			json::parse(args[3]), json::parse(args[4]), json::string_t(prepStr(args[5])), json::parse(args[6]) }));
+		j["entities"][id]["positions"].push_back(json::array({ json::parse(args[1].c_str()), json::parse(args[2].c_str()),
+			json::parse(args[3].c_str()), json::parse(args[4].c_str()), json::string_t(prepStr(args[5].c_str())), json::parse(args[6].c_str()) }));
 	}
 	else {
 		ERROR_THROW(E_INCORRECT_COMMAND_PARAM, 0)
@@ -676,15 +770,15 @@ int commandUpdateUnit(const char **args, int argsCnt)
 	return 0;
 }
 
-int commandUpdateVeh(const char **args, int argsCnt)
+int commandUpdateVeh(vector<string> args)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(5)
 		COMMAND_CHECK_WRITING_STATE
 
 		int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {
-		j["entities"][id]["positions"].push_back(json::array({ json::parse(args[1]), json::parse(args[2]),
-			json::parse(args[3]), json::parse(args[4]) }));
+		j["entities"][id]["positions"].push_back(json::array({ json::parse(args[1].c_str()), json::parse(args[2].c_str()),
+			json::parse(args[3].c_str()), json::parse(args[4].c_str()) }));
 	}
 	else {
 		ERROR_THROW(E_INCORRECT_COMMAND_PARAM, 0)
@@ -693,15 +787,15 @@ int commandUpdateVeh(const char **args, int argsCnt)
 	return 0;
 }
 
-int commandEvent(const char **args, int argsCnt)
+int commandEvent(vector<string> args)
 {
 	COMMAND_CHECK_WRITING_STATE
-		if (argsCnt < 3) {
-			ERROR_THROW(E_NUMBER_ARGS_VAR, argsCnt, "<3")
+		if (args.size() < 3) {
+			ERROR_THROW(E_NUMBER_ARGS_VAR, args.size(), "<3")
 		}
 	json arr = json::array();
-	for (int i = 0; i < argsCnt; i++) {
-		arr.push_back(json::parse(args[i]));
+	for (int i = 0; i < args.size(); i++) {
+		arr.push_back(json::parse(args[i].c_str()));
 	}
 	j["events"].push_back(arr);
 	return 0;
@@ -796,12 +890,23 @@ int __stdcall RVExtensionArgs(char *output, int outputSize, const char *function
 
 	try {
 
-		auto fn = commands.find(function);
-		if (fn == commands.end()) {
+		auto fn = dll_commands.find(function);
+		if (fn == dll_commands.end()) {
 			ERROR_THROW(E_FUN_NOT_SUPPORTED, function)
 		}
 		else {
-			res = fn->second(args, argsCnt);
+			// res = fn->second(args, argsCnt);
+			// append to commands
+			string str_function(function);
+			vector<string> str_args;
+			for (int i = 0; i < argsCnt; ++i) {
+				str_args.push_back(string(args[i]));
+			}
+			{
+				unique_lock<mutex> lock(command_mutex);
+				commands.push(std::make_tuple(std::move(str_function), std::move(str_args)));
+			}
+			command_cond.notify_one();
 		}
 	}
 	catch (const ocapSaverException &e) {
@@ -847,6 +952,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	case DLL_PROCESS_ATTACH: {
 		initialize_logger(true);
 		readWriteConfig(hModule);
+		command_thread = thread(command_loop);
 		break;
 	}
 
@@ -855,6 +961,9 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	case DLL_PROCESS_DETACH: {
 		if (curl_init)
 			curl_global_cleanup();
+		command_thread_shutdown = true;
+		command_cond.notify_one();
+		command_thread.join();
 		break;
 
 	}
