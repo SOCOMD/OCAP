@@ -28,7 +28,7 @@ v 3.0.8.0 2018-01-21 Zealot При команде :START: происходит �
 v 3.0.8.1 2018-06-16 Zealot При команде SAVE если в названии миссии есть кавычки выкидывается исключение
 v 3.0.8.2 2018-06-18 Zealot Финальный фикс проблемы с именем миссии
 v 4.0.0.1 2018-11-26 Zealot Test version, worker threads variants
-v 4.0.0.2 2018-11-29 Zealot Optimised multithreading
+v 4.0.0.3 2018-11-29 Zealot Optimised multithreading
 
 TODO:
 - сжатие данных
@@ -37,7 +37,7 @@ TODO:
 
 */
 
-#define CURRENT_VERSION "4.0.0.2"
+#define CURRENT_VERSION "4.0.0.3"
 
 #pragma endregion
 
@@ -117,11 +117,11 @@ namespace {
 	using json = nlohmann::json;
 
 	thread command_thread;
-	queue<tuple<string, vector<string> > > commands;
+	volatile queue<tuple<string, vector<string> > > commands;
 	mutex command_mutex;
 	mutex queue_mutex;
 	condition_variable command_cond;
-	bool command_thread_shutdown = false;
+	volatile bool command_thread_shutdown = false;
 
 
 
