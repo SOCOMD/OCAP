@@ -28,6 +28,7 @@ v 3.0.8.0 2018-01-21 Zealot При команде :START: происходит �
 v 3.0.8.1 2018-06-16 Zealot При команде SAVE если в названии миссии есть кавычки выкидывается исключение
 v 3.0.8.2 2018-06-18 Zealot Финальный фикс проблемы с именем миссии
 v 4.0.0.1 2018-11-26 Zealot Test version, worker threads variants
+v 4.0.0.2 2018-11-29 Zealot Optimised multithreading
 
 TODO:
 - сжатие данных
@@ -36,7 +37,7 @@ TODO:
 
 */
 
-#define CURRENT_VERSION "4.0.0.1"
+#define CURRENT_VERSION "4.0.0.2"
 
 #pragma endregion
 
@@ -118,6 +119,7 @@ namespace {
 	thread command_thread;
 	queue<tuple<string, vector<string> > > commands;
 	mutex command_mutex;
+	mutex queue_mutex;
 	condition_variable command_cond;
 	bool command_thread_shutdown = false;
 
@@ -202,79 +204,96 @@ namespace {
 }
 
 
-void command_loop() {
-	while (true) {
-		if (command_thread_shutdown)
-		{
-			LOG(INFO) << "Exit flag is set. Quiting command loop.";
-			return;
+void perform_command(tuple<string, vector<string> > &command) {
+	string function(std::move(std::get<0>(command)));
+	vector<string> args(std::move(std::get<1>(command)));
+
+	int res = 1;
+
+	if (config.traceLog) {
+		stringstream ss;
+		ss << function << " " << args.size() << ":[";
+		for (int i = 0; i < args.size(); i++) {
+			if (i > 0)
+				ss << "::";
+			ss << args[i];
+		}
+		ss << "]";
+		LOG(TRACE) << ss.str();
+	}
+
+
+	try {
+
+		auto fn = dll_commands.find(function);
+		if (fn == dll_commands.end()) {
+			ERROR_THROW(E_FUN_NOT_SUPPORTED, function)
 		}
 		else {
+			res = fn->second(args);
+
+		}
+	}
+	catch (const ocapSaverException &e) {
+		res = e.getErrorCode();
+		LOG(ERROR) << "E:" << res << e.what();
+	}
+	catch (const exception &e) {
+		res = 1;
+		LOG(ERROR) << "Exception: " << e.what();
+	}
+	catch (...) {
+		res = 1;
+		LOG(ERROR) << "Exception: Unknown";
+	}
+
+	if (res != 0) {
+		stringstream ss;
+		ss << "Return: " << res << " parameters were: " << function << " ";
+		ss << args.size() << ":[";
+		for (int i = 0; i < args.size(); i++) {
+			if (i > 0)
+				ss << "::";
+			ss << args[i];
+		}
+		ss << "]";
+		LOG(ERROR) << ss.str();
+	}
+
+}
+
+
+void command_loop() {
+	try {
+		while (true) {
+			if (command_thread_shutdown)
+			{
+				LOG(INFO) << "Exit flag is set. Quiting command loop.";
+				return;
+			}
 			unique_lock<mutex> lock(command_mutex);
 			command_cond.wait(lock, [] {return !commands.empty() || command_thread_shutdown; });
-			while (!commands.empty()) {
+			lock.release();
+
+			while (true) {
+				unique_lock<mutex> lock2(command_mutex);
+				if (commands.empty())
+				{
+					break;
+				}
 				tuple<string, vector<string> > cur_command = std::move(commands.front());
 				commands.pop();
-				string function(std::move(std::get<0>(cur_command)));
-				vector<string> args(std::move(std::get<1>(cur_command)));
-				
-				int res=1;
-
-				if (config.traceLog) {
-					stringstream ss;
-					ss << function << " " << args.size() << ":[";
-					for (int i = 0; i < args.size(); i++) {
-						if (i > 0)
-							ss << "::";
-						ss << args[i];
-					}
-					ss << "]";
-					LOG(TRACE) << ss.str();
-				}
-
-
-				try {
-
-					auto fn = dll_commands.find(function);
-					if (fn == dll_commands.end()) {
-						ERROR_THROW(E_FUN_NOT_SUPPORTED, function)
-					}
-					else {
-						res = fn->second(args);
-
-					}
-				}
-				catch (const ocapSaverException &e) {
-					res = e.getErrorCode();
-					LOG(ERROR) << "E:" << res << e.what();
-				}
-				catch (const exception &e) {
-					res = 1;
-					LOG(ERROR) << "Exception: " << e.what();
-				}
-				catch (...) {
-					res = 1;
-					LOG(ERROR) << "Exception: Unknown";
-				}
-
-				if (res != 0) {
-					stringstream ss;
-					ss << "Return: " << res << " parameters were: " << function << " ";
-					ss << args.size() << ":[";
-					for (int i = 0; i < args.size(); i++) {
-						if (i > 0)
-							ss << "::";
-						ss << args[i];
-					}
-					ss << "]";
-					LOG(ERROR) << ss.str();
-				}
-
-				el::Loggers::flushAll();
+				lock2.release();
+				perform_command(cur_command);
 			}
 		}
 	}
-
+	catch (const exception &e) {
+		LOG(ERROR) << "Exception: " << e.what();
+	}
+	catch (...) {
+		LOG(ERROR) << "Exception: Unknown";
+	}
 }
 
 string removeAdd(const char * c) {
@@ -898,7 +917,9 @@ int __stdcall RVExtensionArgs(char *output, int outputSize, const char *function
 			// append to commands
 			string str_function(function);
 			vector<string> str_args;
-			for (int i = 0; i < argsCnt; ++i) {
+		
+			for (int i = 0; i < argsCnt; ++i) 
+			{
 				str_args.push_back(string(args[i]));
 			}
 			{
@@ -913,12 +934,12 @@ int __stdcall RVExtensionArgs(char *output, int outputSize, const char *function
 			command_cond.notify_one();
 		}
 	}
-	catch (const exception &e) {
-		res = 1;
+	catch (const exception &e) 
+	{
 		LOG(ERROR) << "Exception: " << e.what();
 	}
-	catch (...) {
-		res = 1;
+	catch (...) 
+	{
 		LOG(ERROR) << "Exception: Unknown";
 	}
 
