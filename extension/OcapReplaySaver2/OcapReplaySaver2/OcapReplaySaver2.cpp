@@ -29,6 +29,7 @@ v 3.0.8.1 2018-06-16 Zealot При команде SAVE если в назван�
 v 3.0.8.2 2018-06-18 Zealot Финальный фикс проблемы с именем миссии
 v 4.0.0.1 2018-11-26 Zealot Test version, worker threads variants
 v 4.0.0.3 2018-11-29 Zealot Optimised multithreading
+v 4.0.0.4 2018-11-29 Zealot fixed last deadlocks )))
 
 TODO:
 - сжатие данных
@@ -117,12 +118,10 @@ namespace {
 	using json = nlohmann::json;
 
 	thread command_thread;
-	volatile queue<tuple<string, vector<string> > > commands;
+	queue<tuple<string, vector<string> > > commands;
 	mutex command_mutex;
-	mutex queue_mutex;
 	condition_variable command_cond;
-	volatile bool command_thread_shutdown = false;
-
+	atomic<bool> command_thread_shutdown(false);
 
 
 	std::unordered_map<std::string, std::function<int(const vector<string> &)> > dll_commands = {
@@ -268,7 +267,7 @@ void command_loop() {
 		while (true) {
 			unique_lock<mutex> lock(command_mutex);
 			command_cond.wait(lock, [] {return !commands.empty() || command_thread_shutdown; });
-			lock.release();
+			lock.unlock();
 
 			while (true) {
 				unique_lock<mutex> lock2(command_mutex);
@@ -278,10 +277,10 @@ void command_loop() {
 				}
 				tuple<string, vector<string> > cur_command = std::move(commands.front());
 				commands.pop();
-				lock2.release();
+				lock2.unlock();
 				perform_command(cur_command);
 			}
-			if (command_thread_shutdown)
+			if (command_thread_shutdown.load())
 			{
 				LOG(INFO) << "Exit flag is set. Quiting command loop.";
 				return;
@@ -860,7 +859,7 @@ void initialize_logger(bool forcelog = false, int verb_level = 0) {
 	el::Loggers::reconfigureLogger(el::Loggers::getLogger("default", true), defaultConf);
 	el::Loggers::addFlag(el::LoggingFlag::DisableApplicationAbortOnFatalLog);
 	el::Loggers::addFlag(el::LoggingFlag::AutoSpacing);
-	//el::Loggers::addFlag(el::LoggingFlag::ImmediateFlush);
+	el::Loggers::addFlag(el::LoggingFlag::ImmediateFlush);
 	//el::Loggers::addFlag(el::LoggingFlag::StrictLogFileSizeCheck);
 	el::Loggers::setVerboseLevel(verb_level);
 	//	el::Loggers::addFlag(el::LoggingFlag::HierarchicalLogging);
