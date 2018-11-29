@@ -499,8 +499,8 @@ class UI {
 		localizable(this.modalBody, "copy_link", `</h2> </center>
 		<input readonly="true" type="text" id="ShareLink">`, `<center> <h2 style="color:white">`);
 
-		let text = document.location.host + "/?";
-		text += "file=" + fileName;
+		let text = window.location.protocol + "//" + document.location.host + "/?";
+		text += "file=" + fileName.replace(/ /g, "%20");
 		text += "&frame=" + playbackFrame;
 		text += "&zoom=" + map.getZoom();
 		text += "&x=" + map.getCenter().lat;
