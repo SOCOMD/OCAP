@@ -266,11 +266,6 @@ void perform_command(tuple<string, vector<string> > &command) {
 void command_loop() {
 	try {
 		while (true) {
-			if (command_thread_shutdown)
-			{
-				LOG(INFO) << "Exit flag is set. Quiting command loop.";
-				return;
-			}
 			unique_lock<mutex> lock(command_mutex);
 			command_cond.wait(lock, [] {return !commands.empty() || command_thread_shutdown; });
 			lock.release();
@@ -285,6 +280,11 @@ void command_loop() {
 				commands.pop();
 				lock2.release();
 				perform_command(cur_command);
+			}
+			if (command_thread_shutdown)
+			{
+				LOG(INFO) << "Exit flag is set. Quiting command loop.";
+				return;
 			}
 		}
 	}
