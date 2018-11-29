@@ -841,6 +841,7 @@ void initialize_logger(bool forcelog = false, int verb_level = 0) {
 	el::Loggers::reconfigureLogger(el::Loggers::getLogger("default", true), defaultConf);
 	el::Loggers::addFlag(el::LoggingFlag::DisableApplicationAbortOnFatalLog);
 	el::Loggers::addFlag(el::LoggingFlag::AutoSpacing);
+	//el::Loggers::addFlag(el::LoggingFlag::ImmediateFlush);
 	//el::Loggers::addFlag(el::LoggingFlag::StrictLogFileSizeCheck);
 	el::Loggers::setVerboseLevel(verb_level);
 	//	el::Loggers::addFlag(el::LoggingFlag::HierarchicalLogging);
@@ -904,6 +905,11 @@ int __stdcall RVExtensionArgs(char *output, int outputSize, const char *function
 				unique_lock<mutex> lock(command_mutex);
 				commands.push(std::make_tuple(std::move(str_function), std::move(str_args)));
 			}
+			if (!command_thread.joinable())
+			{
+				LOG(TRACE) << "No worker thread. Creating one!";
+				command_thread = thread(command_loop);
+			}
 			command_cond.notify_one();
 		}
 	}
@@ -931,7 +937,6 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	case DLL_PROCESS_ATTACH: {
 		initialize_logger(true);
 		readWriteConfig(hModule);
-		command_thread = thread(command_loop);
 		break;
 	}
 
@@ -942,7 +947,8 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 			curl_global_cleanup();
 		command_thread_shutdown = true;
 		command_cond.notify_one();
-		command_thread.join();
+		if (command_thread.joinable())
+			command_thread.join();
 		break;
 
 	}
