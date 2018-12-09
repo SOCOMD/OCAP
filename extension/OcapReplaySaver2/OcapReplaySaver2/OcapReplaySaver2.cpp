@@ -523,7 +523,7 @@ void curlUploadFile(string url, string file, string fileName, int timeout) {
 }
 
 void curlActions(string worldName, string missionName, string duration, string filename, string tfile) {
-	LOG(INFO) << worldName, missionName, duration, filename, tfile;
+	LOG(INFO) << worldName <<  missionName << duration << filename << tfile;
 	if (!curl_init) {
 		curl_global_init(CURL_GLOBAL_ALL);
 		curl_init = true;
