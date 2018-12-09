@@ -30,6 +30,7 @@ v 3.0.8.2 2018-06-18 Zealot Финальный фикс проблемы с им
 v 4.0.0.1 2018-11-26 Zealot Test version, worker threads variants
 v 4.0.0.3 2018-11-29 Zealot Optimised multithreading
 v 4.0.0.4 2018-11-29 Zealot fixed last deadlocks )))
+v 4.0.0.5 2018-12-09 Zealot potential bug with return * char 
 
 TODO:
 - сжатие данных
@@ -38,7 +39,7 @@ TODO:
 
 */
 
-#define CURRENT_VERSION "4.0.0.3"
+#define CURRENT_VERSION "4.0.0.5"
 
 #pragma endregion
 
@@ -389,7 +390,7 @@ std::string saveCurrentReplayToTempFile() {
 	currentReplay.flush();
 	currentReplay.close();
 	LOG(INFO) << "Replay saved:" << tName;
-	return tName;
+	return string(tName);
 
 }
 
