@@ -31,6 +31,7 @@ v 4.0.0.1 2018-11-26 Zealot Test version, worker threads variants
 v 4.0.0.3 2018-11-29 Zealot Optimised multithreading
 v 4.0.0.4 2018-11-29 Zealot fixed last deadlocks )))
 v 4.0.0.5 2018-12-09 Zealot potential bug with return * char 
+v 4.0.0.6 2018-12-09 Zealot fixed crash after mission saved
 
 TODO:
 - сжатие данных
@@ -39,7 +40,7 @@ TODO:
 
 */
 
-#define CURRENT_VERSION "4.0.0.5"
+#define CURRENT_VERSION "4.0.0.6"
 
 #pragma endregion
 
@@ -98,20 +99,20 @@ TODO:
 
 using namespace std;
 
-int commandEvent(const vector<string> &args);
-int commandNewUnit(const vector<string> &args);
-int commandNewVeh(const vector<string> &args);
-int commandSave(const vector<string> &args);
-int commandUpdateUnit(const vector<string> &args);
-int commandUpdateVeh(const vector<string> &args);
-int commandClear(const vector<string> &args);
-int commandLog(const vector<string> &args);
-int commandStart(const vector<string> &args);
-int commandFired(const vector<string> &args);
+void commandEvent(const vector<string> &args);
+void commandNewUnit(const vector<string> &args);
+void commandNewVeh(const vector<string> &args);
+void commandSave(const vector<string> &args);
+void commandUpdateUnit(const vector<string> &args);
+void commandUpdateVeh(const vector<string> &args);
+void commandClear(const vector<string> &args);
+void commandLog(const vector<string> &args);
+void commandStart(const vector<string> &args);
+void commandFired(const vector<string> &args);
 
-int commandMarkerCreate(const vector<string> &args);
-int commandMarkerDelete(const vector<string> &args);
-int commandMarkerMove(const vector<string> &args);
+void commandMarkerCreate(const vector<string> &args);
+void commandMarkerDelete(const vector<string> &args);
+void commandMarkerMove(const vector<string> &args);
 
 namespace {
 	
@@ -125,7 +126,7 @@ namespace {
 	atomic<bool> command_thread_shutdown(false);
 
 
-	std::unordered_map<std::string, std::function<int(const vector<string> &)> > dll_commands = {
+	std::unordered_map<std::string, std::function<void(const vector<string> &)> > dll_commands = {
 		{ CMD_NEW_VEH,			commandNewVeh },
 		{ CMD_NEW_UNIT,			commandNewUnit },
 		{ CMD_CLEAR,			commandClear },
@@ -141,59 +142,23 @@ namespace {
 		{ CMD_MARKER_MOVE,		commandMarkerMove   }
 	};
 
-	class ocapSaverException : public std::exception {
+	class ocapException : public std::exception {
 	public:
-		ocapSaverException(const char *s, int i) :
-			std::exception(s, i) {
-			_i = i;
-		}
-		int getErrorCode() const {
-			return _i;
-		}
-	private:
-		int _i = 0;
+		ocapException() : std::exception() {};
+		ocapException(const char* e) : std::exception(e) {};
+
 	};
 
-#define MSG_ERROR_COMMAND "Error while command execution. "
-#define MSG_ERROR_NOT_SUPPORTED "Error: Not supported call. "
-
-	enum {
-		E_NO_ERRORS = 0,
-
-		E_FUN_NOT_SUPPORTED = 6,
-		E_INCORRECT_COMMAND_PARAM = 7,
-		E_NOT_WRITING_STATE = 8,
-		E_NUMBER_ARG = 9,
-		E_NUMBER_ARGS_VAR = 10
-	};
-
-#define ERROR_MSG_BUF_LEN 1024
-	char errorMsg[ERROR_MSG_BUF_LEN] = "";
-
-	char *errors[] = {
-		/* 0 */		"",
-		/* 1 */		"",
-		/* 2 */		"",
-		/* 3 */		"",
-		/* 4 */		"",
-		/* 5 */		"",
-		/* 6 */		"ERROR: Function %s is not supported ! (%s:%s)",
-		/* 7 */		"ERROR: Incorrect command param %i ! (%s:%s)",
-		/* 8 */		"ERROR: Is not writing state ! (%s:%s)",
-		/* 9 */		"ERROR: Incorrect number of given arguments %i instead of expected %i ! (%s:%s)",
-		/* 10 */	"ERROR: Incorrect number of given arguments %i instead of expected %s ! (%s:%s)"
-	};
-
-#define ERROR_THROW(E, ...) if(true){snprintf(errorMsg, ERROR_MSG_BUF_LEN, errors[E], ##__VA_ARGS__, __FUNCTION__, __LINE__);throw ocapSaverException(errorMsg, E);}
-#define COMMAND_CHECK_INPUT_PARAMETERS(N) if(args.size()!=N){ERROR_THROW(E_NUMBER_ARG, args.size(), N)}
-#define COMMAND_CHECK_WRITING_STATE	if(!is_writing){ERROR_THROW(E_NOT_WRITING_STATE)}
+#define ERROR_THROW(S) {LOG(ERROR) << S;throw ocapException(S); }
+#define COMMAND_CHECK_INPUT_PARAMETERS(N) if(args.size()!=N){ERROR_THROW("Unexpected number of given arguments!"); LOG(WARNING) << "Expected " << N << "arguments";}
+#define COMMAND_CHECK_WRITING_STATE	if(!is_writing.load()) {ERROR_THROW("Is not writing state!")}
 	
 	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 
 	json j;
 	bool curl_init = false;
 
-	bool is_writing = false;
+	atomic<bool> is_writing(false);
 
 	struct {
 		std::string dbInsertUrl = "http://ocap.red-bear.ru/data/receive.php?option=dbInsert";
@@ -207,8 +172,7 @@ namespace {
 void perform_command(tuple<string, vector<string> > &command) {
 	string function(std::move(std::get<0>(command)));
 	vector<string> args(std::move(std::get<1>(command)));
-
-	int res = 1;
+	bool error = false;
 
 	if (config.traceLog) {
 		stringstream ss;
@@ -222,34 +186,28 @@ void perform_command(tuple<string, vector<string> > &command) {
 		LOG(TRACE) << ss.str();
 	}
 
-
 	try {
-
 		auto fn = dll_commands.find(function);
 		if (fn == dll_commands.end()) {
-			ERROR_THROW(E_FUN_NOT_SUPPORTED, function)
+			LOG(ERROR) << "Function is not supported! " << function;
 		}
 		else {
-			res = fn->second(args);
+			fn->second(args);
 
 		}
 	}
-	catch (const ocapSaverException &e) {
-		res = e.getErrorCode();
-		LOG(ERROR) << "E:" << res << e.what();
-	}
 	catch (const exception &e) {
-		res = 1;
+		error = true;
 		LOG(ERROR) << "Exception: " << e.what();
 	}
 	catch (...) {
-		res = 1;
+		error = true;
 		LOG(ERROR) << "Exception: Unknown";
 	}
 
-	if (res != 0) {
+	if (error) {
 		stringstream ss;
-		ss << "Return: " << res << " parameters were: " << function << " ";
+		ss << "Return, parameters were: " << function << " ";
 		ss << args.size() << ":[";
 		for (int i = 0; i < args.size(); i++) {
 			if (i > 0)
@@ -323,6 +281,7 @@ std::string prepStr(const char * c) {
 
 void prepareMarkerFrames(int frames) {
 	// причесывает "Markers"
+	LOG(TRACE) << frames;
 
 	try {
 		if (j["Markers"].is_null() || !j["Markers"].is_array() || j["Markers"].size() < 1) {
@@ -381,7 +340,7 @@ std::string saveCurrentReplayToTempFile() {
 	fstream currentReplay(tName, fstream::out | fstream::binary);
 	if (!currentReplay.is_open()) {
 		LOG(ERROR) << "Cannot open result file: " << tName;
-		throw std::exception("Cannot open temp file!");
+		throw ocapException("Cannot open temp file!");
 	}
 	if (config.traceLog) 
 		currentReplay << j.dump(4);
@@ -402,11 +361,6 @@ std::string generateResultFileName(const std::string &name) {
 	ss << std::put_time(&tm, REPLAY_FILEMASK) << name << ".json";
 	return ss.str();
 }
-
-
-
-
-
 
 #pragma region Вычитка конфига
 void readWriteConfig(HMODULE hModule) {
@@ -583,7 +537,7 @@ void curlActions(string worldName, string missionName, string duration, string f
 
 #pragma region Commands Handlers
 
-int commandMarkerCreate(const vector<string> &args) {
+void commandMarkerCreate(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(11)
 		COMMAND_CHECK_WRITING_STATE
 
@@ -607,34 +561,31 @@ int commandMarkerCreate(const vector<string> &args) {
 	json coordRecord = json::array({ frameNo, json::parse(args[10].c_str()), json::parse(args[1].c_str()) });
 	a[10].push_back(coordRecord);
 	j["Markers"].push_back(a);
-	return 0;
 }
 
-int commandMarkerDelete(const vector<string> &args) {
+void commandMarkerDelete(const vector<string> &args) {
 	//найти старый маркер и поставить ему текущий номер фрейма
 	COMMAND_CHECK_INPUT_PARAMETERS(2)
-		COMMAND_CHECK_WRITING_STATE
+	COMMAND_CHECK_WRITING_STATE
 
-		json mname = json::parse(args[0].c_str());
+	json mname = json::parse(args[0].c_str());
 	auto it = find_if(j["Markers"].rbegin(), j["Markers"].rend(), [&](const auto & i) { return i[0] == mname; });
 	if (it == j["Markers"].rend()) {
 		LOG(ERROR) << "No such marker" << args[0];
-		return 7;
+		throw ocapException("No such marker!");
 	}
-
 	(*it)[5] = json::parse(args[1].c_str());
-	return 0;
 }
 
-int commandMarkerMove(const vector<string> &args) {
+void commandMarkerMove(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(3)
-		COMMAND_CHECK_WRITING_STATE
+	COMMAND_CHECK_WRITING_STATE
 
-		json mname = json::parse(args[0].c_str()); // имя маркера
+	json mname = json::parse(args[0].c_str()); // имя маркера
 	auto it = find_if(j["Markers"].rbegin(), j["Markers"].rend(), [&](const auto & i) { return i[0] == mname; });
 	if (it == j["Markers"].rend()) {
 		LOG(ERROR) << "No such marker" << args[0];
-		return 7;
+		throw ocapException("No such marker!");
 	}
 	json coordRecord = json::array({ json::parse(args[1].c_str()), json::parse(args[2].c_str()), 0 });
 	// ищем последнюю запись с таким же фреймом
@@ -650,42 +601,36 @@ int commandMarkerMove(const vector<string> &args) {
 		LOG(TRACE) << "Record on this frame already exists." << *coord << "replacing it with new params" << coordRecord;
 		*coord = coordRecord;
 	}
-	return 0;
 }
 
-int commandLog(const vector<string> &args) {
+void commandLog(const vector<string> &args) {
 	stringstream ss;
 	for (int i = 0; i < args.size(); i++)
 		ss << args[i] << " ";
 	CLOG(WARNING, "ext") << ss.str();
-	return 0;
 }
 
-int commandFired(const vector<string> &args)
+void commandFired(const vector<string> &args)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(3)
-		COMMAND_CHECK_WRITING_STATE
+	COMMAND_CHECK_WRITING_STATE
 
-
-		int id = stoi(args[0]);
+	int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {
 		j["entities"][id]["framesFired"].push_back(json::array({ json::parse(args[1].c_str()), json::parse(args[2].c_str()) }));
 	}
 	else {
-		ERROR_THROW(E_INCORRECT_COMMAND_PARAM, 0)
-			return 1;
+		LOG(ERROR) << "Incorrect params, no" << id << "entity!";
 	}
-
-	return 0;
 }
 
-int commandStart(const vector<string> &args) {
+void commandStart(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(4)
 
-		if (is_writing) {
-			LOG(WARNING) << ":START: while writing mission. Clearing old data.";
-			commandClear(args);
-		}
+	if (is_writing) {
+		LOG(WARNING) << ":START: while writing mission. Clearing old data.";
+		commandClear(args);
+	}
 	LOG(INFO) << "Closing old log. Starting record." << args[0] << args[1] << args[2] << args[3];
 
 	auto loggerDefault = el::Loggers::getLogger("default");
@@ -708,44 +653,41 @@ int commandStart(const vector<string> &args) {
 
 	LOG(INFO) << "Starting record." << args[0] << args[1] << args[2] << args[3];
 	CLOG(INFO, "ext") << "Starting record." << args[0] << args[1] << args[2] << args[3];
-	return 0;
 }
 
-int commandNewUnit(const vector<string> &args) {
+void commandNewUnit(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(6)
-		COMMAND_CHECK_WRITING_STATE
+	COMMAND_CHECK_WRITING_STATE
 
-		json unit { { "startFrameNum", json::parse(args[0].c_str()) }, { "type" , "unit" },
-			  { "id", json::parse(args[1].c_str()) }, { "name", json::string_t(prepStr(args[2].c_str())) },
-			  { "group", json::parse(args[3].c_str()) }, { "side", json::parse(args[4].c_str()) },
-			  { "isPlayer", json::parse(args[5].c_str()) }
+	json unit { { "startFrameNum", json::parse(args[0].c_str()) }, { "type" , "unit" },
+			{ "id", json::parse(args[1].c_str()) }, { "name", json::string_t(prepStr(args[2].c_str())) },
+			{ "group", json::parse(args[3].c_str()) }, { "side", json::parse(args[4].c_str()) },
+			{ "isPlayer", json::parse(args[5].c_str()) }
 	};
 	unit["positions"] = json::array();
 	unit["framesFired"] = json::array();
 	j["entities"].push_back(unit);
-	return 0;
 }
 
-int commandNewVeh(const vector<string> &args) {
+void commandNewVeh(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(4)
-		COMMAND_CHECK_WRITING_STATE
+	COMMAND_CHECK_WRITING_STATE
 
-		json unit { { "startFrameNum", json::parse(args[0].c_str()) },
-				  { "type" , "vehicle" }, { "id", json::parse(args[1].c_str()) },
-				  { "name", json::string_t(prepStr(args[3].c_str())) },
-				  { "class", json::parse(args[2].c_str()) }
+	json unit { { "startFrameNum", json::parse(args[0].c_str()) },
+				{ "type" , "vehicle" }, { "id", json::parse(args[1].c_str()) },
+				{ "name", json::string_t(prepStr(args[3].c_str())) },
+				{ "class", json::parse(args[2].c_str()) }
 	};
 	unit["positions"] = json::array();
 	unit["framesFired"] = json::array();
 	j["entities"].push_back(unit);
-	return 0;
 }
 
 
-int commandSave(const vector<string> &args) {
+void commandSave(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(5)
-		COMMAND_CHECK_WRITING_STATE
-		LOG(INFO) << args[0] << args[1] << args[2] << args[3] << args[4];
+	COMMAND_CHECK_WRITING_STATE
+	LOG(INFO) << args[0] << args[1] << args[2] << args[3] << args[4];
 
 	j["worldName"] = json::parse(args[0].c_str());
 	j["missionName"] = json::string_t(prepStr(args[1].c_str()));
@@ -756,6 +698,7 @@ int commandSave(const vector<string> &args) {
 	prepareMarkerFrames(j["endFrame"]);
 
 	string tName = saveCurrentReplayToTempFile();
+	LOG(INFO) << "TMP:" << tName;
 	string fname = generateResultFileName(j["missionName"].get<std::string>());
 	curlActions(json::parse(args[0].c_str()), j["missionName"].get<std::string>(), to_string(stod(args[3]) * stod(args[4])), fname, tName);
 	
@@ -763,16 +706,15 @@ int commandSave(const vector<string> &args) {
 }
 
 
-int commandClear(const vector<string> &args)
+void commandClear(const vector<string> &args)
 {
 	COMMAND_CHECK_WRITING_STATE
 		LOG(INFO) << "CLEAR";
 	j.clear();
 	is_writing = false;
-	return 0;
 }
 
-int commandUpdateUnit(const vector<string> &args)
+void commandUpdateUnit(const vector<string> &args)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(7)
 		COMMAND_CHECK_WRITING_STATE
@@ -783,41 +725,36 @@ int commandUpdateUnit(const vector<string> &args)
 			json::parse(args[3].c_str()), json::parse(args[4].c_str()), json::string_t(prepStr(args[5].c_str())), json::parse(args[6].c_str()) }));
 	}
 	else {
-		ERROR_THROW(E_INCORRECT_COMMAND_PARAM, 0)
+		LOG(ERROR) << "Incorrect params, no" << id << "entity!";
 	}
-
-	return 0;
 }
 
-int commandUpdateVeh(const vector<string> &args)
+void commandUpdateVeh(const vector<string> &args)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(5)
 		COMMAND_CHECK_WRITING_STATE
 
-		int id = stoi(args[0]);
+	int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {
 		j["entities"][id]["positions"].push_back(json::array({ json::parse(args[1].c_str()), json::parse(args[2].c_str()),
 			json::parse(args[3].c_str()), json::parse(args[4].c_str()) }));
 	}
 	else {
-		ERROR_THROW(E_INCORRECT_COMMAND_PARAM, 0)
+		LOG(ERROR) << "Incorrect params, no" << id << "entity!";
 	}
-
-	return 0;
 }
 
-int commandEvent(const vector<string> &args)
+void commandEvent(const vector<string> &args)
 {
 	COMMAND_CHECK_WRITING_STATE
 		if (args.size() < 3) {
-			ERROR_THROW(E_NUMBER_ARGS_VAR, args.size(), "<3")
+			ERROR_THROW("Number of arguments lesser then 3!")
 		}
 	json arr = json::array();
 	for (int i = 0; i < args.size(); i++) {
 		arr.push_back(json::parse(args[i].c_str()));
 	}
 	j["events"].push_back(arr);
-	return 0;
 }
 
 
@@ -888,8 +825,8 @@ void __stdcall RVExtensionVersion(char *output, int outputSize)
 
 void __stdcall RVExtension(char *output, int outputSize, const char *function)
 {
-	LOG(ERROR) << "IN:" << function << " OUT:" << MSG_ERROR_NOT_SUPPORTED;
-	strncpy_s(output, outputSize, MSG_ERROR_NOT_SUPPORTED, _TRUNCATE);
+	LOG(ERROR) << "IN:" << function << " OUT:" << "Error: Not supported call";
+	strncpy_s(output, outputSize, "Error: Not supported call", _TRUNCATE);
 }
 
 int __stdcall RVExtensionArgs(char *output, int outputSize, const char *function, const char **args, int argsCnt)
@@ -908,31 +845,23 @@ int __stdcall RVExtensionArgs(char *output, int outputSize, const char *function
 	}
 
 	try {
-		auto fn = dll_commands.find(function);
-		if (fn == dll_commands.end()) {
-			ERROR_THROW(E_FUN_NOT_SUPPORTED, function)
-		}
-		else {
-			// res = fn->second(args, argsCnt);
-			// append to commands
-			string str_function(function);
-			vector<string> str_args;
+		string str_function(function);
+		vector<string> str_args;
 		
-			for (int i = 0; i < argsCnt; ++i) 
-			{
-				str_args.push_back(string(args[i]));
-			}
-			{
-				unique_lock<mutex> lock(command_mutex);
-				commands.push(std::make_tuple(std::move(str_function), std::move(str_args)));
-			}
-			if (!command_thread.joinable())
-			{
-				LOG(TRACE) << "No worker thread. Creating one!";
-				command_thread = thread(command_loop);
-			}
-			command_cond.notify_one();
+		for (int i = 0; i < argsCnt; ++i) 
+		{
+			str_args.push_back(string(args[i]));
 		}
+		{
+			unique_lock<mutex> lock(command_mutex);
+			commands.push(std::make_tuple(std::move(str_function), std::move(str_args)));
+		}
+		if (!command_thread.joinable())
+		{
+			LOG(TRACE) << "No worker thread. Creating one!";
+			command_thread = thread(command_loop);
+		}
+		command_cond.notify_one();
 	}
 	catch (const exception &e) 
 	{
