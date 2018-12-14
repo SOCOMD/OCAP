@@ -11,7 +11,7 @@ if (!file_exists("data.db")) {
 	echo "Database not found. Please ensure you have ran the installer first.";
 	exit;
 };
-// if (!in_array($_SERVER['REMOTE_ADDR'], $ipGameServer)) die("Don't hack me! ".$_SERVER["REMOTE_ADDR"]);
+if (!in_array($_SERVER['REMOTE_ADDR'], $ipGameServer)) die("Don't hack me! ".$_SERVER["REMOTE_ADDR"]);
 //if (($_SERVER['REMOTE_ADDR'] != "195.88.209.214") && ($_SERVER['REMOTE_ADDR'] != "193.19.118.241")) die("Don't hack me! ".$_SERVER["REMOTE_ADDR"]);
 
 $option = $_GET["option"];
