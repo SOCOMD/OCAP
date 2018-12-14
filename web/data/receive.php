@@ -11,7 +11,7 @@ if (!file_exists("data.db")) {
 	echo "Database not found. Please ensure you have ran the installer first.";
 	exit;
 };
-if (!in_array($_SERVER['REMOTE_ADDR'], $ipGameServer)) die("Don't hack me! ".$_SERVER["REMOTE_ADDR"]);
+// if (!in_array($_SERVER['REMOTE_ADDR'], $ipGameServer)) die("Don't hack me! ".$_SERVER["REMOTE_ADDR"]);
 //if (($_SERVER['REMOTE_ADDR'] != "195.88.209.214") && ($_SERVER['REMOTE_ADDR'] != "193.19.118.241")) die("Don't hack me! ".$_SERVER["REMOTE_ADDR"]);
 
 $option = $_GET["option"];
@@ -38,22 +38,24 @@ if ($option == "addFile") { // Add receieved file to this directory
 	fclose($fileopen);
 	
 	$fileName = str_replace($forbiddenChar, "", $_POST["fileName"]);
-	$fileContents = $_FILES["fileContents"];
-
-	try {
-		if (move_uploaded_file($fileContents["tmp_name"], 'no_compress/' . $fileName)) {
-			echo "Successfully created file.";
-		} else {
-			echo "No successfully created file.";
-		};
-	} catch (Exception $e) {
-		echo $e->getMessage();
-	};
-	$data = implode("", file('no_compress/' . $fileName));
+	// $fileContents = $_FILES["fileContents"];
+	$data = file_get_contents($_FILES["fileContents"]['tmp_name']);
+	// try {
+	// 	if (move_uploaded_file($fileContents["tmp_name"], 'no_compress/' . $fileName)) {
+	// 		echo "Successfully created file.";
+	// 	} else {
+	// 		echo "No successfully created file.";
+	// 	};
+	// } catch (Exception $e) {
+	// 	echo $e->getMessage();
+	// };
+	// $data = implode("", file($fileContents["tmp_name"]));
 	$gzdata = gzencode($data, 6);
 	$fp = fopen("$fileName.gz", "w");
 	fwrite($fp, $gzdata);
 	fclose($fp);
+	// Delete it if everything works.
+	move_uploaded_file($_FILES["fileContents"]['tmp_name'], 'no_compress/' . $fileName);
 } elseif ($option == "dbInsert") { // Insert values into SQLite database
 	$date = date("Y-m-d");
 	$serverId = -1;
