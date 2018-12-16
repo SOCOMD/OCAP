@@ -8,6 +8,7 @@
 </Files>
 
 RewriteEngine On
+AddType application/json .gz
 AddEncoding gzip .gz
 RewriteCond %{HTTP:Accept-encoding} gzip
 RewriteCond %{REQUEST_FILENAME}.gz -f
