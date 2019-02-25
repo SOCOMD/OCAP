@@ -69,6 +69,12 @@ if ($_POST['agree']) {
 			)
 		");
 		$db->exec("DELETE FROM servers"); // Delete any previously existing rows
+		$db->exec("
+		CREATE TABLE `statistics` (
+			`date`	DATETIME NOT NULL DEFAULT CURRENT_DATE,
+			`view`	INTEGER NOT NULL DEFAULT 0,
+			PRIMARY KEY(`date`)
+		)");
 		$db->exec(sprintf("
 			INSERT INTO servers (remote_id, name, ip, host, root, view_count, capture_count)
 			VALUES (
