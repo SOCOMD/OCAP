@@ -3,7 +3,7 @@
     $dbPath = "data/data.db";
     $db = new PDO('sqlite:' . $dbPath);
     $error = 0;
-    $ops = [];
+    $ops = array();
     if (!file_exists($dbPath)) {
         $error = 1;
     } else {
@@ -20,10 +20,10 @@
 		*/
 		//var_dump($_POST);
 		$q = "SELECT * FROM operations WHERE date <= :older AND date >= :newer";
-		$p = [
+		$p = array(
 			'older' => $_POST['older'],
 			'newer' => $_POST['newer']
-		];
+        );
 		//var_dump($q);
 		if ($_POST['type'] != '') {
 			$q .= " AND type LIKE :type ";

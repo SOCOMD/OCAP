@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -7,11 +7,11 @@ error_reporting(E_ALL);
 $debug = false;
 $appTitle = "OCAP";
 $appDesc = "Operation Capture And Playback";
-$appAuthor = "MisterGoodson (aka Goodson [3CB])";
-$ipGameServer = ["195.88.209.214", "193.19.118.241"];
-$allTypeGames = [["Все", ""], ["TvT", "tvt"], ["IF", "if"], ["LTvT", "TvT_Tactical"]];
+$appAuthor = "MisterGoodson (aka Goodson array(3CB))";
+$ipGameServer = array("server_ip");
+$allTypeGames = array(array("Все", ""), array("TvT", "tvt"), array("IF", "if"), array("LTvT", "TvT_Tactical"));
 $lang = "ru";
-const VERSION = "2.2.1";
+define('VERSION', '2.2.2');
 
 // Please do not modify this as these stats help me get a job. Thank-you! :)
 $statServerUrl = "http://138.201.116.116/ocap/remote/";
