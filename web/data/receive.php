@@ -37,7 +37,7 @@ if ($option == "addFile") { // Add receieved file to this directory
 	fwrite($fileopen,$write);
 	fclose($fileopen);
 	
-	$fileName = str_replace($forbiddenChar, "", $_POST["fileName"]);
+	$fileName = str_replace($forbiddenChar, "", urldecode($_POST["fileName"]));
 	// $fileContents = $_FILES["fileContents"];
 	$data = file_get_contents($_FILES["fileContents"]['tmp_name']);
 	// try {
@@ -91,11 +91,7 @@ if ($option == "addFile") { // Add receieved file to this directory
 			'date' => $date,
 			'type' => $type
 			));
-		// Get server ID
-		$results = $db->query("SELECT remote_id FROM servers");
-		$serverId = $results->fetch()["remote_id"];
-		$db = null;
-		print_debug($serverId);
+		
 
 	} catch (PDOExecption $e) {
 		echo "Exception: ".$e->getMessage();
