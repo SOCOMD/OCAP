@@ -94,6 +94,7 @@ if ($result != "") {
 		<span id="missionName" class="medium"></span>
 	</div>
 	<div id="leftPanel">
+		<div class="title bold" data-lb="players"></div>
 		<div class="panelContent">
 			<ul id="listWest"></ul>
 			<ul id="listEast"></ul>

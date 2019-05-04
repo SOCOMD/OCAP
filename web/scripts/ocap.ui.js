@@ -204,6 +204,10 @@ class UI {
 		this.eventTimeline = document.getElementById("eventTimeline");
 
 		// Hide/show ui on keypress
+		var left_title = document.getElementById("leftPanel").getElementsByClassName("title")[0];
+		var right_title = document.getElementById("rightPanel").getElementsByClassName("title")[0];
+		left_title.onclick = () => {this.toggleLeftPanel()};
+		right_title.onclick = () => {this.toggleRightPanel()};
 		mapDiv.addEventListener("keypress", (event) => {
 			//console.log(event.charCode);
 

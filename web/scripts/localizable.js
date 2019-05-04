@@ -1,4 +1,8 @@
 let _localizable = {
+	"players": {
+		"ru": "Игроки",
+		"en": "Players",
+	},
 	"events": {
 		"ru": "События",
 		"en": "Events"
