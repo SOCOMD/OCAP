@@ -28,12 +28,19 @@ if (strlen($string) > 500) {
 }
 echo "Processed data: \n". $string . "\n";
 
+function str2filename($str) : string
+{
+	// TODO: Change to the correct regular expression
+	$res = preg_replace('/[\0\r\n\\\"\'\/\[\]:;\|=\?\<\>\*\.\,]/', '', $str);
+	return $res;
+}
+
 if ($option == "addFile") { // Add receieved file to this directory
-	$fileName = urldecode($_POST["fileName"]);
+	$fileName = str2filename($_POST["fileName"]);
 	$fileContents = $_FILES["fileContents"];
 
 	try {
-		if (move_uploaded_file($fileContents["tmp_name"],$fileName )) {
+		if (move_uploaded_file($fileContents["tmp_name"], $fileName)) {
 			echo "Successfully created file.";
 		} else {
 			echo "No successfully created file.";
@@ -52,18 +59,26 @@ if ($option == "addFile") { // Add receieved file to this directory
 	try {
 		$db = new PDO('sqlite:data.db');
 
-		// Add operation to database
-		$db->exec(sprintf("
-			INSERT INTO operations (world_name, mission_name, mission_duration, filename, date, type) VALUES (
-				'%s',
-				'%s',
-				%d,
-				'%s',
-				'%s',
-				'%s'
+		$sql = "INSERT INTO operations 
+			(world_name, mission_name, mission_duration, filename, date, type) VALUES (
+				:world_name,
+				:mission_name,
+				:mission_duration,
+				:filename,
+				:date,
+				:type
 			)
-		", $_GET["worldName"], $_GET["missionName"], $_GET["missionDuration"], $_GET["filename"], $date, $_GET["type"]));
-
+		";
+		$sth = $db->prepare($sql, array(PDO::ATTR_CURSOR => PDO::CURSOR_FWDONLY));
+		$sth->execute(array(
+			':world_name' => $_GET["worldName"],
+			':mission_name' => $_GET["missionName"],
+			':mission_duration' => $_GET["missionDuration"],
+			':filename' => str2filename($_GET["filename"]),
+			':date' => $date,
+			':type' => $_GET["type"]
+		));
+		
 		// TODO: Increment local capture count
 
 		// Get server ID
