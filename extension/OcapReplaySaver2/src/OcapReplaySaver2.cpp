@@ -32,6 +32,7 @@ v 4.0.0.3 2018-11-29 Zealot Optimised multithreading
 v 4.0.0.4 2018-11-29 Zealot fixed last deadlocks )))
 v 4.0.0.5 2018-12-09 Zealot potential bug with return * char 
 v 4.0.0.6 2018-12-09 Zealot fixed crash after mission saved
+v 4.0.0.7 2019-12-07 Zealot Using CMake for building
 
 TODO:
 - сжатие данных
@@ -77,11 +78,10 @@ TODO:
 
 #define LOG_NAME "ocaplog\\ocap-main.%datetime{%Y%M%d_%H%m%s}.log"
 #define LOG_NAME_EXT "ocaplog\\ocap-ext.%datetime{%Y%M%d_%H%m%s}.log"
-#define REPLAY_TMP "%Y_%m_%d__%H_%M_%S_"
 
 #define REPLAY_FILEMASK "%Y_%m_%d__%H_%M_"
-#define CONFIG_NAME "ocap\\OcapReplaySaver2.cfg.json"
-#define CONFIG_NAME_SAMPLE "ocap\\OcapReplaySaver2.cfg.json.sample"
+#define CONFIG_NAME L"OcapReplaySaver2.cfg.json"
+#define CONFIG_NAME_SAMPLE L"OcapReplaySaver2.cfg.json.sample"
 
 #define CMD_NEW_UNIT		":NEW:UNIT:"  // новый юнит зарегистрирована ocap
 #define CMD_NEW_VEH			":NEW:VEH:"  // новая техника зарегистрирована ocap
@@ -331,22 +331,12 @@ void prepareMarkerFrames(int frames) {
 
 }
 
-std::string getFileName(const char * mask, const char * name, const char * ext)
-{
-	std::time_t t = std::time(nullptr);
-	std::tm tm;
-	localtime_s(&tm, &t);
-	std::stringstream ss;
-	ss << std::put_time(&tm, mask) << name << ".json";
-	return ss.str();
-}
-
-std::string generateResultFileName(const std::string &name) {
-	return getFileName(REPLAY_FILEMASK, name.c_str(), ".json");
-}
 
 std::string saveCurrentReplayToTempFile() {
-	std::string tName = "ocap\\" + getFileName(REPLAY_TMP, "ocap", ".tmp");
+	char tPath[MAX_PATH] = { 0 };
+	char tName[MAX_PATH] = { 0 };
+	GetTempPathA(MAX_PATH, tPath);
+	GetTempFileNameA(tPath, "ocap", 0, tName);
 
 	fstream currentReplay(tName, fstream::out | fstream::binary);
 	if (!currentReplay.is_open()) {
@@ -364,18 +354,32 @@ std::string saveCurrentReplayToTempFile() {
 
 }
 
+std::string generateResultFileName(const std::string &name) {
+	std::time_t t = std::time(nullptr);
+	std::tm tm;
+	localtime_s(&tm, &t);
+	std::stringstream ss;
+	ss << std::put_time(&tm, REPLAY_FILEMASK) << name << ".json";
+	return ss.str();
+}
 
 #pragma region Вычитка конфига
-void readWriteConfig() {
-	if (!std::ifstream(CONFIG_NAME_SAMPLE)) {
-		LOG(INFO) << "Creating sample config file: " << CONFIG_NAME_SAMPLE;
+void readWriteConfig(HMODULE hModule) {
+	wchar_t szPath[MAX_PATH], szDirPath[_MAX_DIR];
+	GetModuleFileNameW(hModule, szPath, MAX_PATH);
+	_wsplitpath_s(szPath, 0, 0, szDirPath, _MAX_DIR, 0, 0, 0, 0);
+	wstring path(szDirPath), path_sample(szDirPath);
+	path += CONFIG_NAME;
+	path_sample += CONFIG_NAME_SAMPLE;
+	if (!std::ifstream(path_sample)) {
+		LOG(INFO) << "Creating sample config file: " << converter.to_bytes(path_sample);
 		json j = { { "addFileUrl", config.addFileUrl },{ "dbInsertUrl", config.dbInsertUrl },{ "httpRequestTimeout", config.httpRequestTimeout }, {"traceLog", config.traceLog} };
-		std::ofstream out(CONFIG_NAME_SAMPLE, ofstream::out | ofstream::binary);
+		std::ofstream out(path_sample, ofstream::out | ofstream::binary);
 		out << j.dump(4) << endl;
 	}
-	LOG(INFO) << "Trying to read config file:" << CONFIG_NAME;
+	LOG(INFO) << "Trying to read config file:" << converter.to_bytes(path);
 	bool cfgOpened = false;
-	ifstream cfg(CONFIG_NAME, ifstream::in | ifstream::binary);
+	ifstream cfg(path, ifstream::in | ifstream::binary);
 
 	json jcfg;
 	if (!cfg.is_open()) {
@@ -883,7 +887,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	{
 	case DLL_PROCESS_ATTACH: {
 		initialize_logger(true);
-		readWriteConfig();
+		readWriteConfig(hModule);
 		break;
 	}
 
