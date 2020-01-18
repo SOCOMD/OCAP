@@ -1,65 +1,7 @@
-<?php
-include "common.php";
-$dbPath = "data/data.db";
-
-// Check if database exists
-if (!file_exists($dbPath)) {
-	echo "
-	<div style='font-family: Arial, sans-serif;'>
-		<b>Error:</b> Database not found. Please ensure you have ran the <a href='install/'>installer</a> first.
-	</div>
-	";
-	exit();
-};
-
-// Get server's id from local DB
-$db = new PDO('sqlite:' . $dbPath);
-$result = $db->query("SELECT remote_id FROM servers");
-$row = $result->fetchObject();
-$id = $row->remote_id; // Used later when contacting stats server
-print_debug("ID: " . $id);
-
-// Increment view count in local DB
-$db->exec(sprintf("UPDATE servers SET view_count = view_count + 1 WHERE remote_id = %d", $id));
-
-/*
-// Get list of operations from DB
-$result = $db->query("SELECT * FROM operations");
-$ops = array();
-foreach($result as $row) {
-	$ops[] = $row;
-}*/
-
-// Close DB
-$db = NULL;
-
-
-// Contact stats server to increment view count
-// Please do not modify this as these stats help me get a job. Thank-you! :)
-// Sometimes the server does not respond, sorry
-/*
-$result = curlRemote("stats-manager.php", array(
-	"option" => "increment_view_count",
-	"server_id" => $id
-));
-print_debug("Result: " . $result);
-
-// Check remote server for any urgent messages
-$result = curlRemote("stats-manager.php", array(
-	"option" => "get_urgent_message",
-	"version" => VERSION
-));
-
-if ($result != "") {
-	echo sprintf("<script>alert(\"%s\")</script>", $result);
-	print_debug($result);
-}
-*/
-?>
 <!DOCTYPE html>
 <html>
 <head>
-	<title><?php echo $appTitle; ?></title>
+	<title>{{.Title}}</title>
 	<meta charset="utf-8"/>
 	<meta name="viewport" content="initial-scale=1.0, user-scalable=no"/>
 	<link rel="stylesheet" href="leaflet/leaflet.css" />
@@ -156,15 +98,13 @@ if ($result != "") {
 		<div id="modalHeader" class="modalHeader medium">Header</div>
 		<div id="modalFilter" class="modalFilter">
 			<select id="filterTypeGameInput">
-				<?php
-					foreach ($allTypeGames as &$param) {
-						echo "<option value=\"$param[1]\">$param[0]</option>";
-					};
-				?>
+				{{range .ClassesGame}}
+					<option value="{{.Key}}">{{.Name}}</option>
+				{{end}}
 			</select>
 			<input type="text" id="filterGameInput" placeholder="" data-lb="name_missions" />
 			<input type="date" id="calendar1" value="2017-06-01">
-			<input type="date" id="calendar2" value=<?php echo(date("Y-m-d"))?>>
+			<input type="date" id="calendar2" value="2099-12-12">
 			<div id="filterSubmit"></div>
 		</div>
 		<div id="modalBody" class="modalBody">Body</div>
@@ -177,11 +117,11 @@ if ($result != "") {
 	<script src="scripts/localizable.js"></script>
 <script>
 
-let appVersion = <?php echo json_encode(VERSION); ?>;
-let appTitle = <?php echo json_encode($appTitle); ?>;
-let appDesc = <?php echo json_encode($appDesc); ?>;
-let appAuthor = <?php echo json_encode($appAuthor); ?>;
-let lang = <?php echo json_encode($lang); ?>;
+let appVersion = "{{.Version}}";
+let appTitle = "{{.Title}}";
+let appDesc = "{{.Description}}";
+let appAuthor = "{{.Author}}";
+let lang = "{{.Language}}";
 
 initOCAP();
 </script>
