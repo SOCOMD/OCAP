@@ -398,13 +398,13 @@ class UI {
 		var DateNewer = calendar1.value;
 		var DateOlder = calendar2.value;
 		$.ajax({
-			url: 'ListOps.php',
-			type : "POST",
+			url: '/api/v1/operations/get',
+			type : "get",
 			async : false,
 			cache : false,
 			data: `type=${type}&name=${name}&newer=${DateNewer}&older=${DateOlder}`,
 			success: function(data){
-				OpList = data.list
+				OpList = data
 			}
 		});
 
