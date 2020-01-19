@@ -1,0 +1,13 @@
+{
+	"title": "OCAP",
+	"description": "Operation Capture And Playback",
+	"author": "MisterGoodson (aka Goodson [3CB])",
+	"language": "ru",
+	"version": "3.0.0",
+	"listen": "127.0.0.1:5000",
+	"classes-game": [
+		{"key": "", "name": "Все"},
+		{"key": "tvt", "name": "TvT"},
+		{"key": "if", "name": "IF"}
+	]
+}
