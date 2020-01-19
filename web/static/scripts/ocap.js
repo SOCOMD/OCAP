@@ -152,6 +152,7 @@ function getWorldByName(worldName) {
 			result = data;
 		},
 		error: function () {
+			result = {"name": "NOT FOUND", "worldname": "NOT FOUND", "worldSize": 16384, "imageSize": 16384, "multiplier": 1};
 			ui.showHint(`Error: Map "${worldName}" is not installed`);
 		}
 	});
