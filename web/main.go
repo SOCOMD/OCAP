@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -31,6 +32,7 @@ import (
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/mholt/certmagic"
 )
 
 var (
@@ -46,7 +48,8 @@ type Options struct {
 	Author      string      `json:"author"`
 	Language    string      `json:"language"`
 	Version     string      `json:"version"`
-	Listen      string      `json:"listen"`
+	Domains     []string    `json:"domains"`
+	Secret      string      `json:"secret"`
 	ClassesGame []ClassGame `json:"classes-game"`
 }
 
@@ -70,6 +73,13 @@ func OperationGet(w http.ResponseWriter, r *http.Request) {
 
 // OperationAdd http header add operation only for server
 func OperationAdd(w http.ResponseWriter, r *http.Request) {
+	// Check secret variable
+	if r.FormValue("secret") != options.Secret {
+		fmt.Println(r.RemoteAddr, "invalid secret denied access")
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
 	file, _, err := r.FormFile("file")
 	check(err)
 	defer file.Close()
@@ -146,6 +156,7 @@ func main() {
 	defer filelog.Close()
 	wrt := io.MultiWriter(os.Stdout, filelog)
 	log.SetOutput(wrt)
+	log.Println("=== Starting server ===")
 
 	// Create home page
 	if indexHTML, err = CreatePage("index.html", options); err != nil {
@@ -176,11 +187,11 @@ func main() {
 	}
 
 	// Create router
+	mux := http.NewServeMux()
 	fs := http.FileServer(http.Dir("static"))
-	http.Handle("/", StaticHandler(fs))
-	http.HandleFunc("/api/v1/operations/add", OperationAdd)
-	http.HandleFunc("/api/v1/operations/get", OperationGet)
+	mux.Handle("/", StaticHandler(fs))
+	mux.HandleFunc("/api/v1/operations/add", OperationAdd)
+	mux.HandleFunc("/api/v1/operations/get", OperationGet)
 
-	log.Println("Listen:", options.Listen)
-	log.Println(http.ListenAndServe(options.Listen, nil))
+	certmagic.HTTPS(options.Domains, mux)
 }
