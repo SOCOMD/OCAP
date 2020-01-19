@@ -131,6 +131,21 @@ func main() {
 	}
 	defer db.Close()
 
+	// Create default database
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS operations (
+		id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+		world_name TEXT,
+		mission_name TEXT,
+		mission_duration INTEGER,
+		filename TEXT,
+		'date' TEXT ,
+		'type' TEXT NOT NULL DEFAULT ''
+	)`)
+	if err != nil {
+		log.Println("error:", err)
+		panic(err)
+	}
+
 	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/", StaticHandler(fs))
 	http.HandleFunc("/api/v1/operations/add", OperationAdd)
