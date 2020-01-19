@@ -1,0 +1,5 @@
+# ACME folder
+certs
+
+# ignore database
+*.db
