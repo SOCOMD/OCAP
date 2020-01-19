@@ -63,7 +63,6 @@ func NewOperation(r *http.Request) (op Operation, err error) {
 	op.WorldName = r.FormValue("worldName")
 	op.MissionName = r.FormValue("missionName")
 	op.MissionDuration, err = strconv.ParseFloat(r.FormValue("missionDuration"), 64)
-	op.Filename = r.FormValue("filename")
 	op.Date = time.Now().Format("2006-01-02")
 	op.Class = r.FormValue("type")
 	return op, err
