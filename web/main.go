@@ -19,24 +19,6 @@ var (
 	indexHTML []byte
 )
 
-// Operation Model opearation table in db
-type Operation struct {
-	ID              int64   `json:"id"`
-	WorldName       string  `json:"world_name"`
-	MissionName     string  `json:"mission_name"`
-	MissionDuration float64 `json:"mission_duration"`
-	Filename        string  `json:"filename"`
-	Date            string  `json:"date"`
-	Class           string  `json:"type"`
-}
-
-// ClassGame Model type game in option file
-// Example [TvT, tvt]
-type ClassGame struct {
-	Key  string `json:"key"`
-	Name string `json:"name"`
-}
-
 // Options Model option file
 type Options struct {
 	Title       string      `json:"title"`
@@ -45,28 +27,6 @@ type Options struct {
 	Language    string      `json:"language"`
 	Version     string      `json:"version"`
 	ClassesGame []ClassGame `json:"classes-game"`
-}
-
-// GetAll execute all operation in array
-func (o Operation) GetAll(rows *sql.Rows) (operations []Operation) {
-	for rows.Next() {
-		op := Operation{}
-		err := rows.Scan(
-			&op.ID,
-			&op.WorldName,
-			&op.MissionName,
-			&op.MissionDuration,
-			&op.Filename,
-			&op.Date,
-			&op.Class,
-		)
-		if err != nil {
-			fmt.Println("error:", err)
-			continue
-		}
-		operations = append(operations, op)
-	}
-	return operations
 }
 
 // OperationGet http header filter operation
