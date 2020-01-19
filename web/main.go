@@ -26,26 +26,17 @@ type Options struct {
 	Author      string      `json:"author"`
 	Language    string      `json:"language"`
 	Version     string      `json:"version"`
+	Listen      string      `json:"listen"`
 	ClassesGame []ClassGame `json:"classes-game"`
 }
 
 // OperationGet http header filter operation
 func OperationGet(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query(
-		`select * from operations where 
-			type LIKE "%" || $1 || "%" AND
-			mission_name LIKE "%" || $2 || "%" AND
-			date <= $3 AND
-			date >= $4`,
-		r.FormValue("type"),
-		r.FormValue("name"),
-		r.FormValue("older"),
-		r.FormValue("newer"),
-	)
+	op := OperationFilter{r.FormValue("name"), r.FormValue("older"), r.FormValue("newer"), r.FormValue("type")}
+	ops, err := op.GetByFilter(db)
 	if err != nil {
 		fmt.Println("error:", err)
 	}
-	ops := Operation{}.GetAll(rows)
 	b, err := json.Marshal(ops)
 	if err != nil {
 		fmt.Println("error:", err)
@@ -56,7 +47,26 @@ func OperationGet(w http.ResponseWriter, r *http.Request) {
 
 // OperationAdd http header add operation only for server
 func OperationAdd(w http.ResponseWriter, r *http.Request) {
+	check := func(err error) {
+		if err != nil {
+			fmt.Println("error:", err)
+		}
+	}
+	file, _, err := r.FormFile("file")
+	check(err)
+	defer file.Close()
 
+	// Parser new opertion
+	op, err := NewOperation(r)
+	check(err)
+
+	// Compress operation
+	err = op.SaveFileAsGZIP("static/data/", file)
+	check(err)
+
+	// Insert new line in db
+	_, err = op.Insert(db)
+	check(err)
 }
 
 // StaticHandler write index.html (buffer) or send static file
@@ -126,5 +136,5 @@ func main() {
 	http.HandleFunc("/api/v1/operations/add", OperationAdd)
 	http.HandleFunc("/api/v1/operations/get", OperationGet)
 
-	fmt.Println("Listen:", http.ListenAndServe(":5000", nil))
+	fmt.Println("Listen:", http.ListenAndServe(options.Listen, nil))
 }
