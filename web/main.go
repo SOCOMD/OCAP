@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"html/template"
+	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -30,28 +32,26 @@ type Options struct {
 	ClassesGame []ClassGame `json:"classes-game"`
 }
 
+func check(err error) {
+	if err != nil {
+		log.Println("error:", err)
+	}
+}
+
 // OperationGet http header filter operation
 func OperationGet(w http.ResponseWriter, r *http.Request) {
 	op := OperationFilter{r.FormValue("name"), r.FormValue("older"), r.FormValue("newer"), r.FormValue("type")}
 	ops, err := op.GetByFilter(db)
-	if err != nil {
-		fmt.Println("error:", err)
-	}
+	check(err)
+
 	b, err := json.Marshal(ops)
-	if err != nil {
-		fmt.Println("error:", err)
-	}
+	check(err)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(b)
 }
 
 // OperationAdd http header add operation only for server
 func OperationAdd(w http.ResponseWriter, r *http.Request) {
-	check := func(err error) {
-		if err != nil {
-			fmt.Println("error:", err)
-		}
-	}
 	file, _, err := r.FormFile("file")
 	check(err)
 	defer file.Close()
@@ -120,13 +120,24 @@ func init() {
 
 func main() {
 	var err error
+	// Connecting logger file
+	filelog, err := os.OpenFile("ocap.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		panic(err)
+	}
+	defer filelog.Close()
+	wrt := io.MultiWriter(os.Stdout, filelog)
+	log.SetOutput(wrt)
 
 	// Create home page
 	if indexHTML, err = CreatePage("index.html", options); err != nil {
+		log.Println("error:", err)
 		panic(err)
 	}
 
+	// Connect db
 	if db, err = sql.Open("sqlite3", "data.db"); err != nil {
+		log.Println("error:", err)
 		panic(err)
 	}
 	defer db.Close()
@@ -146,10 +157,12 @@ func main() {
 		panic(err)
 	}
 
+	// Create router
 	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/", StaticHandler(fs))
 	http.HandleFunc("/api/v1/operations/add", OperationAdd)
 	http.HandleFunc("/api/v1/operations/get", OperationGet)
 
-	fmt.Println("Listen:", http.ListenAndServe(options.Listen, nil))
+	log.Println("Listen:", options.Listen)
+	log.Println(http.ListenAndServe(options.Listen, nil))
 }
