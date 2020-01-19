@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -76,7 +75,7 @@ func OperationGet(w http.ResponseWriter, r *http.Request) {
 func OperationAdd(w http.ResponseWriter, r *http.Request) {
 	// Check secret variable
 	if r.FormValue("secret") != options.Secret {
-		fmt.Println(r.RemoteAddr, "invalid secret denied access")
+		log.Println(r.RemoteAddr, "invalid secret denied access")
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}

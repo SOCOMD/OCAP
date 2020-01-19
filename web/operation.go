@@ -21,9 +21,9 @@ package main
 import (
 	"compress/gzip"
 	"database/sql"
-	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path"
@@ -137,7 +137,7 @@ func executeAll(rows *sql.Rows) (operations []Operation) {
 			&op.Class,
 		)
 		if err != nil {
-			fmt.Println("error:", err)
+			log.Println("error:", err)
 			continue
 		}
 		operations = append(operations, op)
