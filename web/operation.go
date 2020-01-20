@@ -22,7 +22,6 @@ import (
 	"compress/gzip"
 	"database/sql"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -71,14 +70,10 @@ func (o *Operation) SaveFileAsGZIP(dir string, r io.Reader) (err error) {
 		return err
 	}
 
-	content, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
-
 	w := gzip.NewWriter(f)
 	defer w.Close()
-	_, err = w.Write(content)
+
+	_, err = io.Copy(w, r)
 	if err != nil {
 		return err
 	}
