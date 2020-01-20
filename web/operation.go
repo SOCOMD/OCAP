@@ -31,13 +31,6 @@ import (
 	"time"
 )
 
-// ClassGame Model type game in option file
-// Example [TvT, tvt]
-type ClassGame struct {
-	Key  string `json:"key"`
-	Name string `json:"name"`
-}
-
 // Operation Model opearation table in db
 type Operation struct {
 	ID              int64   `json:"id"`

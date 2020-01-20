@@ -41,6 +41,13 @@ var (
 	indexHTML []byte
 )
 
+// ClassGame Model type game in option file
+// Example [TvT, tvt]
+type ClassGame struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
+}
+
 // Options Model option file
 type Options struct {
 	Title       string      `json:"title"`
