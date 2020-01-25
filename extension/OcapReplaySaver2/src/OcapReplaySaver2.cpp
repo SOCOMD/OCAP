@@ -69,11 +69,13 @@ TODO:
 #include <regex>
 #include <queue>
 #include <tuple>
+#include <cstdint>
 
 #include <Windows.h>
 #include <direct.h>
 #include <process.h>
 #include <curl\curl.h>
+#include <zlib.h>
 
 #include "json.hpp"
 
@@ -171,9 +173,20 @@ namespace {
 		int newMode = 0;
 		int httpRequestTimeout = 120;
 		int traceLog = 0;
+		int compress = 0;
 	} config;
 }
 
+bool compress_buffer(const char* in_buffer, long in_buff_len, vector<uint8_t>& out_buffer) {
+	unsigned long out_buff_len = compressBound(in_buff_len);
+	out_buffer.resize(out_buff_len);
+	if (int e = compress(out_buffer.data(), &out_buff_len, (const unsigned char*)in_buffer, in_buff_len)) {
+		LOG(ERROR) << "Error" << e << "while compressing json!";
+		return false;
+	}
+	out_buffer.resize(out_buff_len);
+	return true;
+}
 
 void perform_command(tuple<string, vector<string> > &command) {
 	string function(std::move(std::get<0>(command)));
@@ -330,7 +343,7 @@ void prepareMarkerFrames(int frames) {
 }
 
 
-std::string saveCurrentReplayToTempFile() {
+pair<string, string> saveCurrentReplayToTempFile() {
 	char tPath[MAX_PATH] = { 0 };
 	char tName[MAX_PATH] = { 0 };
 	GetTempPathA(MAX_PATH, tPath);
@@ -341,15 +354,32 @@ std::string saveCurrentReplayToTempFile() {
 		LOG(ERROR) << "Cannot open result file: " << tName;
 		throw ocapException("Cannot open temp file!");
 	}
+
+	string all_replay;
+
 	if (config.traceLog) 
-		currentReplay << j.dump(4);
+		all_replay = j.dump(4);
 	else 
-		currentReplay << j.dump();
+		all_replay = j.dump();
+
+	currentReplay << all_replay;
 	currentReplay.flush();
 	currentReplay.close();
-	LOG(INFO) << "Replay saved:" << tName;
-	return string(tName);
 
+	vector<uint8_t> archive; 
+	LOG(INFO) << "Replay saved:" << tName;
+	string archive_name;
+
+	if (config.compress && compress_buffer(all_replay.c_str(), all_replay.size(), archive)) {
+		archive_name = string(tName) + ".gz";
+		fstream currentReplayGz(archive_name, fstream::out | fstream::binary);
+		currentReplayGz.write((char *)archive.data(), archive.size());
+		currentReplayGz.flush();
+		currentReplayGz.close();
+		LOG(INFO) << "Archive saved:" << string(tName) + ".gz";
+	}
+	
+	return make_pair(string(tName), archive_name);
 }
 
 std::string generateResultFileName(const std::string &name) {
@@ -380,7 +410,8 @@ void readWriteConfig(HMODULE hModule) {
 			{ "newMode" , config.newMode},
 			{ "newUrl", config.newUrl},
 			{ "newServerGameType", config.newServerGameType },
-			{ "newUrlRequestSecret", config.newUrlRequestSecret}
+			{ "newUrlRequestSecret", config.newUrlRequestSecret},
+			{ "compress", config.compress}
 		};
 		std::ofstream out(path_sample, ofstream::out | ofstream::binary);
 		out << j.dump(4) << endl;
@@ -397,6 +428,7 @@ void readWriteConfig(HMODULE hModule) {
 	cfg >> jcfg;
 	if (!jcfg["addFileUrl"].is_null() && jcfg["addFileUrl"].is_string()) {
 		config.addFileUrl = jcfg["addFileUrl"].get<string>();
+		LOG(TRACE) << "Read addFileUrl=" << config.addFileUrl;
 	}
 	else {
 		LOG(WARNING) << "addFileUrl should be string!";
@@ -404,6 +436,7 @@ void readWriteConfig(HMODULE hModule) {
 
 	if (!jcfg["dbInsertUrl"].is_null() && jcfg["dbInsertUrl"].is_string()) {
 		config.dbInsertUrl = jcfg["dbInsertUrl"].get<string>();
+		LOG(TRACE) << "Read dbInsertUrl=" << config.dbInsertUrl;
 	}
 	else {
 		LOG(WARNING) << "dbInsertUrl should be string!";
@@ -411,6 +444,7 @@ void readWriteConfig(HMODULE hModule) {
 
 	if (!jcfg["httpRequestTimeout"].is_null() && jcfg["httpRequestTimeout"].is_number_integer()) {
 		config.httpRequestTimeout = jcfg["httpRequestTimeout"].get<int>();
+		LOG(TRACE) << "Read httpRequestTimeout=" << config.httpRequestTimeout;
 	}
 	else {
 		LOG(WARNING) << "httpRequestTimeout should be integer!";
@@ -418,6 +452,7 @@ void readWriteConfig(HMODULE hModule) {
 
 	if (!jcfg["traceLog"].is_null() && jcfg["traceLog"].is_number_integer()) {
 		config.traceLog = jcfg["traceLog"].get<int>();
+		LOG(TRACE) << "Read traceLog=" << config.traceLog;
 	}
 	else {
 		LOG(WARNING) << "traceLog should be integer!";
@@ -425,6 +460,7 @@ void readWriteConfig(HMODULE hModule) {
 
 	if (!jcfg["newMode"].is_null() && jcfg["newMode"].is_number_integer()) {
 		config.newMode = jcfg["newMode"].get<int>();
+		LOG(TRACE) << "Read newMode=" << config.newMode;
 	}
 	else {
 		LOG(WARNING) << "newMode should be integer!";
@@ -432,23 +468,34 @@ void readWriteConfig(HMODULE hModule) {
 
 	if (!jcfg["newUrl"].is_null() && jcfg["newUrl"].is_string()) {
 		config.newUrl = jcfg["newUrl"].get<string>();
+		LOG(TRACE) << "Read newUrl=" << config.newUrl;
 	}
 	else {
 		LOG(WARNING) << "newUrl should be string!";
 	}
 
 	if (!jcfg["newServerGameType"].is_null() && jcfg["newServerGameType"].is_string()) {
-		config.newUrl = jcfg["newServerGameType"].get<string>();
+		config.newServerGameType = jcfg["newServerGameType"].get<string>();
+		LOG(TRACE) << "Read newServerGameType=" << config.newServerGameType;
 	}
 	else {
 		LOG(WARNING) << "newServerGameType should be string!";
 	}
 
 	if (!jcfg["newUrlRequestSecret"].is_null() && jcfg["newUrlRequestSecret"].is_string()) {
-		config.newUrl = jcfg["newUrlRequestSecret"].get<string>();
+		config.newUrlRequestSecret = jcfg["newUrlRequestSecret"].get<string>();
+		LOG(TRACE) << "Read newUrlRequestSecret=" << config.newUrlRequestSecret;
 	}
 	else {
 		LOG(WARNING) << "newUrlRequestSecret should be string!";
+	}
+
+	if (!jcfg["compress"].is_null() && jcfg["compress"].is_number_integer()) {
+		config.compress = jcfg["compress"].get<int>();
+		LOG(TRACE) << "Read compress=" << config.newMode;
+	}
+	else {
+		LOG(WARNING) << "compress should be integer!";
 	}
 
 	if (config.traceLog) {
@@ -491,10 +538,12 @@ void curlDbInsert(string b_url, string worldname, string missionName, string mis
 	}
 }
 
-void curlUploadNew(const string &b_url, const string &worldname,const string &missionName, const string &missionDuration, const string &file, int timeout,const string &gametype, const string &secret) {
-	LOG(INFO) << b_url  << worldname << missionName << missionDuration << file << timeout << gametype;
+void curlUploadNew(const string &b_url, const string &worldname,const string &missionName, const string &missionDuration, const pair<string,string> &pair_files, int timeout,const string &gametype, const string &secret) {
+	LOG(INFO) << b_url  << worldname << missionName << missionDuration << pair_files << timeout << gametype;
 	CURL* curl;
 	CURLcode res;
+	bool archive = !pair_files.second.empty();
+	string file = archive ? pair_files.second : pair_files.first;
 	curl = curl_easy_init();
 	if (curl) {
 		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
@@ -522,9 +571,12 @@ void curlUploadNew(const string &b_url, const string &worldname,const string &mi
 		curl_mime_name(part, "missionDuration");
 		curl_mime_data(part, missionDuration.c_str(), CURL_ZERO_TERMINATED);
 		part = curl_mime_addpart(mime);
+		curl_mime_name(part, "archive");
+		curl_mime_data(part, archive ? "1" : "0", CURL_ZERO_TERMINATED);
+		part = curl_mime_addpart(mime);
 		curl_mime_name(part, "type");
 		curl_mime_data(part, gametype.c_str(), CURL_ZERO_TERMINATED);
-		curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+		part = curl_mime_addpart(mime);
 		curl_mime_name(part, "secret");
 		curl_mime_data(part, secret.c_str(), CURL_ZERO_TERMINATED);
 		curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
@@ -615,7 +667,7 @@ void curlUploadFile(string url, string file, string fileName, int timeout) {
 
 }
 
-void curlActions(string worldName, string missionName, string duration, string filename, string tfile) {
+void curlActions(string worldName, string missionName, string duration, string filename, pair<string,string> tfile) {
 	LOG(INFO) << worldName <<  missionName << duration << filename << tfile;
 	if (!curl_init) {
 		curl_global_init(CURL_GLOBAL_ALL);
@@ -627,7 +679,7 @@ void curlActions(string worldName, string missionName, string duration, string f
 	}
 	else {
 		curlDbInsert(config.dbInsertUrl, worldName, missionName, duration, filename, config.httpRequestTimeout);
-		curlUploadFile(config.addFileUrl, tfile, filename, config.httpRequestTimeout);
+		curlUploadFile(config.addFileUrl, tfile.first, filename, config.httpRequestTimeout);
 	}
 	
 	LOG(INFO) << "Finished!";
@@ -797,10 +849,10 @@ void commandSave(const vector<string> &args) {
 
 	prepareMarkerFrames(j["endFrame"]);
 
-	string tName = saveCurrentReplayToTempFile();
-	LOG(INFO) << "TMP:" << tName;
+	pair<string, string> fnames = saveCurrentReplayToTempFile();
+	LOG(INFO) << "TMP:" << fnames.first;
 	string fname = generateResultFileName(j["missionName"].get<std::string>());
-	curlActions(json::parse(args[0].c_str()), j["missionName"].get<std::string>(), to_string(stod(args[3]) * stod(args[4])), fname, tName);
+	curlActions(json::parse(args[0].c_str()), j["missionName"].get<std::string>(), to_string(stod(args[3]) * stod(args[4])), fname, fnames);
 	
 	return commandClear(args);
 }

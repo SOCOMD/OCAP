@@ -1,3 +1,6 @@
 [submodule "extension/OcapReplaySaver2/external/curl"]
 	path = extension/OcapReplaySaver2/external/curl
 	url = https://github.com/curl/curl.git
+[submodule "extension/OcapReplaySaver2/external/zlib"]
+	path = extension/OcapReplaySaver2/external/zlib
+	url = https://github.com/madler/zlib
