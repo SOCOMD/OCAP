@@ -60,6 +60,18 @@ type Options struct {
 	ClassesGame []ClassGame `json:"classes-game"`
 }
 
+// ResponseWriter Access response to status
+type ResponseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+// WriteHeader Save status code for log
+func (res *ResponseWriter) WriteHeader(code int) {
+	res.status = code
+	res.ResponseWriter.WriteHeader(code)
+}
+
 func check(err error) {
 	if err != nil {
 		log.Println("error:", err)
@@ -139,6 +151,15 @@ func CreatePage(path string, param interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// LoggerRequest writes logs from incoming requests
+func LoggerRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		res := ResponseWriter{w, 200}
+		next.ServeHTTP(&res, r)
+		log.Printf("%s %s %s %v \"%s\" \n", r.RemoteAddr, r.Proto, r.Method, res.status, r.URL)
+	})
+}
+
 func init() {
 	// Parsing option file
 	var (
@@ -204,5 +225,5 @@ func main() {
 	mux.HandleFunc("/api/v1/operations/add", OperationAdd)
 	mux.HandleFunc("/api/v1/operations/get", OperationGet)
 
-	certmagic.HTTPS(options.Domains, mux)
+	certmagic.HTTPS(options.Domains, LoggerRequest(mux))
 }
