@@ -34,15 +34,15 @@ v 4.0.0.5 2018-12-09 Zealot potential bug with return * char
 v 4.0.0.6 2018-12-09 Zealot fixed crash after mission saved
 v 4.0.0.7 2019-12-07 Zealot Using CMake for building
 v 4.1.0.0 2020-01-25 Zealot New option for new golang web app
+v 4.1.0.1 2020-01-26 Zealot Data compressing using gzip from zlib
 
 TODO:
-- сжатие данных
 - чтение запись настроек
 
 
 */
 
-#define CURRENT_VERSION "4.1.0.0"
+#define CURRENT_VERSION "4.1.0.1"
 
 #pragma endregion
 
