@@ -177,15 +177,19 @@ namespace {
 	} config;
 }
 
-bool compress_buffer(const char* in_buffer, long in_buff_len, vector<uint8_t>& out_buffer) {
-	unsigned long out_buff_len = compressBound(in_buff_len);
-	out_buffer.resize(out_buff_len);
-	if (int e = compress(out_buffer.data(), &out_buff_len, (const unsigned char*)in_buffer, in_buff_len)) {
-		LOG(ERROR) << "Error" << e << "while compressing json!";
+bool write_compressed_data(const char* filename, const char* buffer, size_t buff_len) {
+	bool result = true;
+	gzFile gz = gzopen(filename, "wb");
+	if (!gz) {
+		LOG(ERROR) << "Cannot create file: " << filename;
 		return false;
 	}
-	out_buffer.resize(out_buff_len);
-	return true;
+	if (!gzwrite(gz, buffer, buff_len)) {
+		LOG(ERROR) << "Error while file writing " << filename;
+		result = false;
+	}
+	gzclose(gz);
+	return result;
 }
 
 void perform_command(tuple<string, vector<string> > &command) {
@@ -370,13 +374,15 @@ pair<string, string> saveCurrentReplayToTempFile() {
 	LOG(INFO) << "Replay saved:" << tName;
 	string archive_name;
 
-	if (config.compress && compress_buffer(all_replay.c_str(), all_replay.size(), archive)) {
+	if (config.compress) {
 		archive_name = string(tName) + ".gz";
-		fstream currentReplayGz(archive_name, fstream::out | fstream::binary);
-		currentReplayGz.write((char *)archive.data(), archive.size());
-		currentReplayGz.flush();
-		currentReplayGz.close();
-		LOG(INFO) << "Archive saved:" << string(tName) + ".gz";
+		if (write_compressed_data(archive_name.c_str(), all_replay.c_str(), all_replay.size())) {
+			LOG(INFO) << "Archive saved:" << string(tName) + ".gz";
+		}
+		else {
+			LOG(WARNING) << "Archive not saved! " << archive_name;
+			archive_name = "";
+		}
 	}
 	
 	return make_pair(string(tName), archive_name);
