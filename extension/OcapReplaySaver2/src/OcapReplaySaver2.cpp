@@ -33,6 +33,7 @@ v 4.0.0.4 2018-11-29 Zealot fixed last deadlocks )))
 v 4.0.0.5 2018-12-09 Zealot potential bug with return * char 
 v 4.0.0.6 2018-12-09 Zealot fixed crash after mission saved
 v 4.0.0.7 2019-12-07 Zealot Using CMake for building
+v 4.1.0.0 2020-01-25 Zealot New option for new golang web app
 
 TODO:
 - сжатие данных
@@ -41,7 +42,7 @@ TODO:
 
 */
 
-#define CURRENT_VERSION "4.0.0.6"
+#define CURRENT_VERSION "4.1.0.0"
 
 #pragma endregion
 
@@ -164,6 +165,10 @@ namespace {
 	struct {
 		std::string dbInsertUrl = "http://ocap.red-bear.ru/data/receive.php?option=dbInsert";
 		std::string addFileUrl = "http://ocap.red-bear.ru/data/receive.php?option=addFile";
+		std::string newUrl = "127.0.0.1:5000/api/v1/operations/add";
+		std::string newServerGameType = "tvt";
+		std::string newUrlRequestSecret = "pwd1234";
+		int newMode = 0;
 		int httpRequestTimeout = 120;
 		int traceLog = 0;
 	} config;
@@ -258,13 +263,6 @@ void command_loop() {
 string removeAdd(const char * c) {
 	std::string r(c);
 	r.erase(remove(r.begin(), r.end(), '#'), r.end());
-	return r;
-}
-
-
-std::string removeQuotes(const char * c) {
-	std::string r(c);
-	r.erase(remove(r.begin(), r.end(), '\"'), r.end());
 	return r;
 }
 
@@ -373,7 +371,17 @@ void readWriteConfig(HMODULE hModule) {
 	path_sample += CONFIG_NAME_SAMPLE;
 	if (!std::ifstream(path_sample)) {
 		LOG(INFO) << "Creating sample config file: " << converter.to_bytes(path_sample);
-		json j = { { "addFileUrl", config.addFileUrl },{ "dbInsertUrl", config.dbInsertUrl },{ "httpRequestTimeout", config.httpRequestTimeout }, {"traceLog", config.traceLog} };
+
+		json j = { 
+			{ "addFileUrl", config.addFileUrl },
+			{ "dbInsertUrl", config.dbInsertUrl },
+			{ "httpRequestTimeout", config.httpRequestTimeout },
+			{ "traceLog", config.traceLog},
+			{ "newMode" , config.newMode},
+			{ "newUrl", config.newUrl},
+			{ "newServerGameType", config.newServerGameType },
+			{ "newUrlRequestSecret", config.newUrlRequestSecret}
+		};
 		std::ofstream out(path_sample, ofstream::out | ofstream::binary);
 		out << j.dump(4) << endl;
 	}
@@ -415,6 +423,34 @@ void readWriteConfig(HMODULE hModule) {
 		LOG(WARNING) << "traceLog should be integer!";
 	}
 
+	if (!jcfg["newMode"].is_null() && jcfg["newMode"].is_number_integer()) {
+		config.newMode = jcfg["newMode"].get<int>();
+	}
+	else {
+		LOG(WARNING) << "newMode should be integer!";
+	}
+
+	if (!jcfg["newUrl"].is_null() && jcfg["newUrl"].is_string()) {
+		config.newUrl = jcfg["newUrl"].get<string>();
+	}
+	else {
+		LOG(WARNING) << "newUrl should be string!";
+	}
+
+	if (!jcfg["newServerGameType"].is_null() && jcfg["newServerGameType"].is_string()) {
+		config.newUrl = jcfg["newServerGameType"].get<string>();
+	}
+	else {
+		LOG(WARNING) << "newServerGameType should be string!";
+	}
+
+	if (!jcfg["newUrlRequestSecret"].is_null() && jcfg["newUrlRequestSecret"].is_string()) {
+		config.newUrl = jcfg["newUrlRequestSecret"].get<string>();
+	}
+	else {
+		LOG(WARNING) << "newUrlRequestSecret should be string!";
+	}
+
 	if (config.traceLog) {
 		el::Configurations defaultConf(*el::Loggers::getLogger("default")->configurations());
 		defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "true");
@@ -425,9 +461,6 @@ void readWriteConfig(HMODULE hModule) {
 
 
 #pragma region CURL
-
-
-
 
 void curlDbInsert(string b_url, string worldname, string missionName, string missionDuration, string filename, int timeout) {
 	LOG(INFO) << worldname << missionName << missionDuration << filename;
@@ -451,7 +484,6 @@ void curlDbInsert(string b_url, string worldname, string missionName, string mis
 				LOG(INFO) << "Curl OK:" << ss.str();
 
 			curl_easy_cleanup(curl);
-			
 		}
 	}
 	catch (...) {
@@ -459,6 +491,65 @@ void curlDbInsert(string b_url, string worldname, string missionName, string mis
 	}
 }
 
+void curlUploadNew(const string &b_url, const string &worldname,const string &missionName, const string &missionDuration, const string &file, int timeout,const string &gametype, const string &secret) {
+	LOG(INFO) << b_url  << worldname << missionName << missionDuration << file << timeout << gametype;
+	CURL* curl;
+	CURLcode res;
+	curl = curl_easy_init();
+	if (curl) {
+		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
+		curl_easy_setopt(curl, CURLOPT_URL, b_url.c_str());
+		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+		curl_easy_setopt(curl, CURLOPT_TIMEOUT, (long)timeout);
+		curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
+		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+		struct curl_slist* headers = NULL;
+		headers = curl_slist_append(headers, "Content-Type: multipart/form-data; boundary=--------------------------330192537127611670327958");
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+		curl_mime* mime;
+		curl_mimepart* part;
+		mime = curl_mime_init(curl);
+		part = curl_mime_addpart(mime);
+		curl_mime_name(part, "file");
+		curl_mime_filedata(part, file.c_str());
+		part = curl_mime_addpart(mime);
+		curl_mime_name(part, "worldName");
+		curl_mime_data(part, worldname.c_str(), CURL_ZERO_TERMINATED);
+		part = curl_mime_addpart(mime);
+		curl_mime_name(part, "missionName");
+		curl_mime_data(part, missionName.c_str(), CURL_ZERO_TERMINATED);
+		part = curl_mime_addpart(mime);
+		curl_mime_name(part, "missionDuration");
+		curl_mime_data(part, missionDuration.c_str(), CURL_ZERO_TERMINATED);
+		part = curl_mime_addpart(mime);
+		curl_mime_name(part, "type");
+		curl_mime_data(part, gametype.c_str(), CURL_ZERO_TERMINATED);
+		curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+		curl_mime_name(part, "secret");
+		curl_mime_data(part, secret.c_str(), CURL_ZERO_TERMINATED);
+		curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+		res = curl_easy_perform(curl);
+		stringstream total;
+		if (!res) {
+			curl_off_t ul;
+			double ttotal;
+			res = curl_easy_getinfo(curl, CURLINFO_SIZE_UPLOAD_T, &ul);
+			if (!res)
+				total << "Uploaded " << ul << " bytes";
+			res = curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &ttotal);
+			if (!res)
+				total << " in " << ttotal << " sec.";
+		}
+		total << " URL:" << b_url;
+
+		if (res != CURLE_OK)
+			LOG(ERROR) << "Curl error:" << curl_easy_strerror(res) << total.str();
+		else
+			LOG(INFO) << "Curl OK:" << total.str();
+		curl_mime_free(mime);
+	}
+	curl_easy_cleanup(curl);
+}
 
 void curlUploadFile(string url, string file, string fileName, int timeout) {
 	LOG(INFO) << fileName << file << timeout << url;
@@ -513,6 +604,7 @@ void curlUploadFile(string url, string file, string fileName, int timeout) {
 			else
 				LOG(INFO) << "Curl OK:" << total.str();
 
+			curl_mime_free(form);
 			curl_easy_cleanup(curl);
 		}
 	}
@@ -529,8 +621,15 @@ void curlActions(string worldName, string missionName, string duration, string f
 		curl_global_init(CURL_GLOBAL_ALL);
 		curl_init = true;
 	}
-	curlDbInsert(config.dbInsertUrl, worldName, missionName, duration, filename, config.httpRequestTimeout);
-	curlUploadFile(config.addFileUrl, tfile, filename, config.httpRequestTimeout);
+
+	if (config.newMode) {
+		curlUploadNew(config.newUrl, worldName, missionName, duration, tfile, config.httpRequestTimeout, config.newServerGameType, config.newUrlRequestSecret);
+	}
+	else {
+		curlDbInsert(config.dbInsertUrl, worldName, missionName, duration, filename, config.httpRequestTimeout);
+		curlUploadFile(config.addFileUrl, tfile, filename, config.httpRequestTimeout);
+	}
+	
 	LOG(INFO) << "Finished!";
 }
 
@@ -718,7 +817,7 @@ void commandClear(const vector<string> &args)
 void commandUpdateUnit(const vector<string> &args)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(7)
-		COMMAND_CHECK_WRITING_STATE
+	COMMAND_CHECK_WRITING_STATE
 
 		int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {

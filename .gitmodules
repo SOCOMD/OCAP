@@ -1,0 +1,3 @@
+[submodule "extension/OcapReplaySaver2/external/curl"]
+	path = extension/OcapReplaySaver2/external/curl
+	url = https://github.com/curl/curl.git
