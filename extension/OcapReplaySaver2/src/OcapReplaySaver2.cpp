@@ -35,6 +35,7 @@ v 4.0.0.6 2018-12-09 Zealot fixed crash after mission saved
 v 4.0.0.7 2019-12-07 Zealot Using CMake for building
 v 4.1.0.0 2020-01-25 Zealot New option for new golang web app
 v 4.1.0.1 2020-01-26 Zealot Data compressing using gzip from zlib
+v 4.1.0.2 2020-01-26 Zealot Filename is stripped from russion symbols and send to webservice, compress is mandatory
 
 TODO:
 - чтение запись настроек
@@ -42,7 +43,7 @@ TODO:
 
 */
 
-#define CURRENT_VERSION "4.1.0.1"
+#define CURRENT_VERSION "4.1.0.2"
 
 #pragma endregion
 
@@ -76,6 +77,8 @@ TODO:
 #include <process.h>
 #include <curl\curl.h>
 #include <zlib.h>
+
+#include "utf8totranslit.h"
 
 #include "json.hpp"
 
@@ -374,7 +377,7 @@ pair<string, string> saveCurrentReplayToTempFile() {
 	LOG(INFO) << "Replay saved:" << tName;
 	string archive_name;
 
-	if (config.compress) {
+	if (true || config.compress) {
 		archive_name = string(tName) + ".gz";
 		if (write_compressed_data(archive_name.c_str(), all_replay.c_str(), all_replay.size())) {
 			LOG(INFO) << "Archive saved:" << string(tName) + ".gz";
@@ -394,7 +397,15 @@ std::string generateResultFileName(const std::string &name) {
 	localtime_s(&tm, &t);
 	std::stringstream ss;
 	ss << std::put_time(&tm, REPLAY_FILEMASK) << name << ".json";
-	return ss.str();
+	vector<char> out(utf8to_translit(ss.str().c_str(), 0));
+	utf8to_translit(ss.str().c_str(), out.data());
+	vector<char>::iterator it = find(out.begin(), out.end(), '\0');
+	if (it != out.end()) {
+		out.resize(out.size() - distance(it, out.end()));
+	}
+	string out_s(out.begin(), out.end());
+	LOG(TRACE) << ss.str() << out_s;
+	return out_s;
 }
 
 #pragma region Вычитка конфига
@@ -544,8 +555,8 @@ void curlDbInsert(string b_url, string worldname, string missionName, string mis
 	}
 }
 
-void curlUploadNew(const string &b_url, const string &worldname,const string &missionName, const string &missionDuration, const pair<string,string> &pair_files, int timeout,const string &gametype, const string &secret) {
-	LOG(INFO) << b_url  << worldname << missionName << missionDuration << pair_files << timeout << gametype;
+void curlUploadNew(const string &b_url, const string &worldname,const string &missionName, const string &missionDuration, const string &filename, const pair<string,string> &pair_files, int timeout,const string &gametype, const string &secret) {
+	LOG(INFO) << b_url  << worldname << missionName << missionDuration << filename <<  pair_files << timeout << gametype;
 	CURL* curl;
 	CURLcode res;
 	bool archive = !pair_files.second.empty();
@@ -568,6 +579,9 @@ void curlUploadNew(const string &b_url, const string &worldname,const string &mi
 		curl_mime_name(part, "file");
 		curl_mime_filedata(part, file.c_str());
 		part = curl_mime_addpart(mime);
+		curl_mime_name(part, "filename");
+		curl_mime_data(part, archive ? (filename + ".gz").c_str() : filename.c_str(), CURL_ZERO_TERMINATED);
+		part = curl_mime_addpart(mime);
 		curl_mime_name(part, "worldName");
 		curl_mime_data(part, worldname.c_str(), CURL_ZERO_TERMINATED);
 		part = curl_mime_addpart(mime);
@@ -577,9 +591,9 @@ void curlUploadNew(const string &b_url, const string &worldname,const string &mi
 		curl_mime_name(part, "missionDuration");
 		curl_mime_data(part, missionDuration.c_str(), CURL_ZERO_TERMINATED);
 		part = curl_mime_addpart(mime);
-		curl_mime_name(part, "archive");
+		/*curl_mime_name(part, "archive");
 		curl_mime_data(part, archive ? "1" : "0", CURL_ZERO_TERMINATED);
-		part = curl_mime_addpart(mime);
+		part = curl_mime_addpart(mime);*/
 		curl_mime_name(part, "type");
 		curl_mime_data(part, gametype.c_str(), CURL_ZERO_TERMINATED);
 		part = curl_mime_addpart(mime);
@@ -681,7 +695,7 @@ void curlActions(string worldName, string missionName, string duration, string f
 	}
 
 	if (config.newMode) {
-		curlUploadNew(config.newUrl, worldName, missionName, duration, tfile, config.httpRequestTimeout, config.newServerGameType, config.newUrlRequestSecret);
+		curlUploadNew(config.newUrl, worldName, missionName, duration, filename, tfile, config.httpRequestTimeout, config.newServerGameType, config.newUrlRequestSecret);
 	}
 	else {
 		curlDbInsert(config.dbInsertUrl, worldName, missionName, duration, filename, config.httpRequestTimeout);
@@ -914,8 +928,6 @@ void commandEvent(const vector<string> &args)
 	}
 	j["events"].push_back(arr);
 }
-
-
 
 #pragma endregion
 
