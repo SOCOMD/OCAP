@@ -37,6 +37,7 @@ v 4.1.0.0 2020-01-25 Zealot New option for new golang web app
 v 4.1.0.1 2020-01-26 Zealot Data compressing using gzip from zlib
 v 4.1.0.2 2020-01-26 Zealot Filename is stripped from russion symbols and send to webservice, compress is mandatory
 v 4.1.0.3 2020-01-26 Zealot gz is not include in filename
+v 4.1.0.4 2020-01-26 Zealot small fixes and optimizations
 
 TODO:
 - чтение запись настроек
@@ -44,7 +45,7 @@ TODO:
 
 */
 
-#define CURRENT_VERSION "4.1.0.3"
+#define CURRENT_VERSION "4.1.0.4"
 
 #pragma endregion
 
@@ -160,6 +161,10 @@ namespace {
 #define ERROR_THROW(S) {LOG(ERROR) << S;throw ocapException(S); }
 #define COMMAND_CHECK_INPUT_PARAMETERS(N) if(args.size()!=N){ERROR_THROW("Unexpected number of given arguments!"); LOG(WARNING) << "Expected " << N << "arguments";}
 #define COMMAND_CHECK_WRITING_STATE	if(!is_writing.load()) {ERROR_THROW("Is not writing state!")}
+
+#define JSON_STR_FROM_ARG(N) (json::string_t(filterSqfString(args[N])))
+#define JSON_INT_FROM_ARG(N) (json::number_integer_t(atoi(args[N].c_str())))
+#define JSON_FLOAT_FROM_ARG(N) (json::number_float_t(atof(args[N].c_str())))
 	
 	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 
@@ -281,23 +286,38 @@ void command_loop() {
 	}
 }
 
-string removeAdd(const char * c) {
+string removeHash(const string & c) {
 	std::string r(c);
 	r.erase(remove(r.begin(), r.end(), '#'), r.end());
 	return r;
 }
 
 // убирает начальные и конечные кавычки в текстк, сдвоенные кавычки превращает в одинарные
-std::string prepStr(const char * c) {
-	std::string out(c);
-	std::regex e("\"\"");
-	std::regex eb("^\"");
-	std::regex ee("\"$");
-	out = regex_replace(out, eb, "");
-	out = regex_replace(out, ee, "");
-	out = regex_replace(out, e, "\"");
-	return out;
+void filterSqfStr(const char* s, char* r) {
+	bool begin = true;
+	while (*s) {
+		if (begin && *s == '"' ||
+			*(s + 1) == '\0' && *s == '"')
+			goto nxt;
+
+		if (*(s + 1) == '"' && *s == '"') {
+			*r = '"'; ++r; ++s;
+			goto nxt;
+		}
+		*r = *s; ++r;
+	nxt:
+		++s;
+		begin = false;
+	}
+	*r = '\0';
 }
+
+string filterSqfString(const string& Str) {
+	unique_ptr<char[]> out(new char[Str.size() + 1]);
+	filterSqfStr(Str.c_str(), static_cast<char*>(out.get()));
+	return string(static_cast<char*>(out.get()));
+}
+
 
 void prepareMarkerFrames(int frames) {
 	// причесывает "Markers"
@@ -381,7 +401,7 @@ pair<string, string> saveCurrentReplayToTempFile() {
 	if (true /*config.compress*/) {
 		archive_name = string(tName) + ".gz";
 		if (write_compressed_data(archive_name.c_str(), all_replay.c_str(), all_replay.size())) {
-			LOG(INFO) << "Archive saved:" << string(tName) + ".gz";
+			LOG(INFO) << "Archive saved:" << archive_name;
 		}
 		else {
 			LOG(WARNING) << "Archive not saved! " << archive_name;
@@ -707,9 +727,11 @@ void curlActions(string worldName, string missionName, string duration, string f
 
 #pragma region Commands Handlers
 
+
+// :MARKER:CREATE: 11:["SWT_M#156"::0::"o_inf"::"CBR"::0::-1::0::"#0000FF"::[1,1]::0::[3915.44,1971.98]]
 void commandMarkerCreate(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(11)
-		COMMAND_CHECK_WRITING_STATE
+	COMMAND_CHECK_WRITING_STATE
 
 		//создать новый маркер
 		if (j["Markers"].is_null()) {
@@ -721,45 +743,57 @@ void commandMarkerCreate(const vector<string> &args) {
 	*/
 
 
-	json::string_t clr = json::string_t(removeAdd(prepStr(args[7].c_str()).c_str()));
+	json::string_t clr = json::string_t(removeHash(filterSqfString(args[7])));
 	if (clr == "any") {
 		clr = "000000";
 	}
 	json frameNo = json::parse(args[4].c_str());
-	json a = json::array({ json::parse(args[0].c_str()), json::parse(args[1].c_str()), json::parse(args[2].c_str()), json::string_t(prepStr(args[3].c_str())), frameNo, json::parse(args[5].c_str()), json::parse(args[6].c_str()),
-		clr, json::parse(args[8].c_str()), json::parse(args[9].c_str()), json::array() });
-	json coordRecord = json::array({ frameNo, json::parse(args[10].c_str()), json::parse(args[1].c_str()) });
+	json a = json::array({
+		JSON_STR_FROM_ARG(0),
+		JSON_INT_FROM_ARG(1),
+		JSON_STR_FROM_ARG(2),
+		JSON_STR_FROM_ARG(3),
+		frameNo, // Frame number when marker created
+		JSON_INT_FROM_ARG(5),
+		JSON_INT_FROM_ARG(6),
+		clr, // Color
+		json::parse(args[8]), // Marker size, always [1,1]
+		json::parse(args[9]), //
+		json::array() }); // Marker pos
+	json coordRecord = json::array({ frameNo, json::parse(args[10].c_str()), JSON_INT_FROM_ARG(1)});
 	a[10].push_back(coordRecord);
 	j["Markers"].push_back(a);
 }
 
+// :MARKER:DELETE: 2:["SWT_M#126"::0]
 void commandMarkerDelete(const vector<string> &args) {
 	//найти старый маркер и поставить ему текущий номер фрейма
 	COMMAND_CHECK_INPUT_PARAMETERS(2)
 	COMMAND_CHECK_WRITING_STATE
 
-	json mname = json::parse(args[0].c_str());
+	json mname = JSON_STR_FROM_ARG(0);
 	auto it = find_if(j["Markers"].rbegin(), j["Markers"].rend(), [&](const auto & i) { return i[0] == mname; });
 	if (it == j["Markers"].rend()) {
 		LOG(ERROR) << "No such marker" << args[0];
 		throw ocapException("No such marker!");
 	}
-	(*it)[5] = json::parse(args[1].c_str());
+	(*it)[5] = JSON_INT_FROM_ARG(1);
 }
 
+// :MARKER:MOVE: 3:["SWT_M#156"::0::[3882.53,2041.32]]
 void commandMarkerMove(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(3)
 	COMMAND_CHECK_WRITING_STATE
 
-	json mname = json::parse(args[0].c_str()); // имя маркера
+	json mname = JSON_STR_FROM_ARG(0); // имя маркера
 	auto it = find_if(j["Markers"].rbegin(), j["Markers"].rend(), [&](const auto & i) { return i[0] == mname; });
 	if (it == j["Markers"].rend()) {
 		LOG(ERROR) << "No such marker" << args[0];
 		throw ocapException("No such marker!");
 	}
-	json coordRecord = json::array({ json::parse(args[1].c_str()), json::parse(args[2].c_str()), 0 });
+	json coordRecord = json::array({ JSON_INT_FROM_ARG(1), json::parse(args[2]), 0 });
 	// ищем последнюю запись с таким же фреймом
-	int frame = coordRecord[0].get<int>();
+	int frame = coordRecord[0];
 	auto coord = find_if((*it)[10].rbegin(), (*it)[10].rend(), [&](const auto & i) { return i[0] == frame; });
 	if (coord == (*it)[10].rend()) {
 		// такой записи нет
@@ -780,20 +814,25 @@ void commandLog(const vector<string> &args) {
 	CLOG(WARNING, "ext") << ss.str();
 }
 
+// TRACE :FIRED: 3:[116::147::[3728.17,2999.07]] 
 void commandFired(const vector<string> &args)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(3)
 	COMMAND_CHECK_WRITING_STATE
 
-	int id = stoi(args[0]);
+	int id = atoi(args[0].c_str());
 	if (!j["entities"][id].is_null()) {
-		j["entities"][id]["framesFired"].push_back(json::array({ json::parse(args[1].c_str()), json::parse(args[2].c_str()) }));
+		j["entities"][id]["framesFired"].push_back(json::array({
+			JSON_INT_FROM_ARG(1),
+			json::parse(args[2])
+		}));
 	}
 	else {
 		LOG(ERROR) << "Incorrect params, no" << id << "entity!";
 	}
 }
 
+// START: 4:["Woodland_ACR"::"RBC_194_Psy_woiny_13a"::"[TF]Shatun63"::1.23] 
 void commandStart(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(4)
 
@@ -816,61 +855,69 @@ void commandStart(const vector<string> &args) {
 	}
 
 	is_writing = true;
-	j["worldName"] = json::parse(args[0].c_str());
-	j["missionName"] = json::string_t(prepStr(args[1].c_str()));
-	j["missionAuthor"] = json::parse(args[2].c_str());
-	j["captureDelay"] = json::parse(args[3].c_str());
+	j["worldName"] = JSON_STR_FROM_ARG(0);
+	j["missionName"] = JSON_STR_FROM_ARG(1);
+	j["missionAuthor"] = JSON_STR_FROM_ARG(2);
+	j["captureDelay"] = JSON_FLOAT_FROM_ARG(3);
 
 	LOG(INFO) << "Starting record." << args[0] << args[1] << args[2] << args[3];
 	CLOG(INFO, "ext") << "Starting record." << args[0] << args[1] << args[2] << args[3];
 }
 
+// :NEW:UNIT: 6:[0::0::"|UN|Capt.Farid"::"Alpha 1-1"::"EAST"::1] 
 void commandNewUnit(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(6)
 	COMMAND_CHECK_WRITING_STATE
 
-	json unit { { "startFrameNum", json::parse(args[0].c_str()) }, { "type" , "unit" },
-			{ "id", json::parse(args[1].c_str()) }, { "name", json::string_t(prepStr(args[2].c_str())) },
-			{ "group", json::parse(args[3].c_str()) }, { "side", json::parse(args[4].c_str()) },
-			{ "isPlayer", json::parse(args[5].c_str()) }
+	json unit { 
+		{ "startFrameNum", JSON_INT_FROM_ARG(0) },
+		{ "type" , "unit" },
+		{ "id", JSON_INT_FROM_ARG(1) },
+		{ "name", JSON_STR_FROM_ARG(2) },
+		{ "group", JSON_STR_FROM_ARG(3) },
+		{ "side", JSON_STR_FROM_ARG(4) },
+		{ "isPlayer", JSON_INT_FROM_ARG(5) }
 	};
 	unit["positions"] = json::array();
 	unit["framesFired"] = json::array();
 	j["entities"].push_back(unit);
 }
 
+// :NEW:VEH: 4:[0::204::"plane"::"MQ-4A Greyhawk"] 
 void commandNewVeh(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(4)
 	COMMAND_CHECK_WRITING_STATE
 
-	json unit { { "startFrameNum", json::parse(args[0].c_str()) },
-				{ "type" , "vehicle" }, { "id", json::parse(args[1].c_str()) },
-				{ "name", json::string_t(prepStr(args[3].c_str())) },
-				{ "class", json::parse(args[2].c_str()) }
+	json unit { 
+		{ "startFrameNum", JSON_INT_FROM_ARG(0) },
+		{ "type" , "vehicle" },
+		{ "id", JSON_INT_FROM_ARG(1) },
+		{ "name", JSON_STR_FROM_ARG(3) },
+		{ "class", JSON_STR_FROM_ARG(2) }
 	};
 	unit["positions"] = json::array();
 	unit["framesFired"] = json::array();
 	j["entities"].push_back(unit);
 }
 
-
+// :SAVE: 5:["Beketov"::"RBC 202 Неожиданный поворот 05"::"[RE]Aventador"::1.23::4233] 
 void commandSave(const vector<string> &args) {
 	COMMAND_CHECK_INPUT_PARAMETERS(5)
 	COMMAND_CHECK_WRITING_STATE
 	LOG(INFO) << args[0] << args[1] << args[2] << args[3] << args[4];
 
-	j["worldName"] = json::parse(args[0].c_str());
-	j["missionName"] = json::string_t(prepStr(args[1].c_str()));
-	j["missionAuthor"] = json::parse(args[2].c_str());
-	j["captureDelay"] = json::parse(args[3].c_str());
-	j["endFrame"] = json::parse(args[4].c_str());
+	j["worldName"] = JSON_STR_FROM_ARG(0);
+	j["missionName"] = JSON_STR_FROM_ARG(1);
+	j["missionAuthor"] = JSON_STR_FROM_ARG(2);
+	j["captureDelay"] = JSON_FLOAT_FROM_ARG(3);
+	j["endFrame"] = JSON_INT_FROM_ARG(4);
 
 	prepareMarkerFrames(j["endFrame"]);
 
 	pair<string, string> fnames = saveCurrentReplayToTempFile();
 	LOG(INFO) << "TMP:" << fnames.first;
-	string fname = generateResultFileName(j["missionName"].get<std::string>());
-	curlActions(json::parse(args[0].c_str()), j["missionName"].get<std::string>(), to_string(stod(args[3]) * stod(args[4])), fname, fnames);
+	string fname = generateResultFileName(j["missionName"]);
+	curlActions(j["worldName"], j["missionName"], to_string(atof(args[3].c_str()) * atof(args[4].c_str())), fname, fnames);
 	
 	return commandClear(args);
 }
@@ -879,50 +926,65 @@ void commandSave(const vector<string> &args) {
 void commandClear(const vector<string> &args)
 {
 	COMMAND_CHECK_WRITING_STATE
-		LOG(INFO) << "CLEAR";
+	LOG(INFO) << "CLEAR";
 	j.clear();
 	is_writing = false;
 }
 
+// :UPDATE:UNIT: 7:[0::[14548.4,19793.9]::84::1::0::"|UN|Capt.Farid"::1] 
 void commandUpdateUnit(const vector<string> &args)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(7)
 	COMMAND_CHECK_WRITING_STATE
 
-		int id = stoi(args[0]);
+		int id = atoi(args[0].c_str());
 	if (!j["entities"][id].is_null()) {
-		j["entities"][id]["positions"].push_back(json::array({ json::parse(args[1].c_str()), json::parse(args[2].c_str()),
-			json::parse(args[3].c_str()), json::parse(args[4].c_str()), json::string_t(prepStr(args[5].c_str())), json::parse(args[6].c_str()) }));
+		j["entities"][id]["positions"].push_back(json::array({ 
+			json::parse(args[1]),
+			JSON_INT_FROM_ARG(2),
+			JSON_INT_FROM_ARG(3),
+			JSON_INT_FROM_ARG(4),
+			JSON_STR_FROM_ARG(5),
+			JSON_INT_FROM_ARG(6)
+		}));
 	}
 	else {
 		LOG(ERROR) << "Incorrect params, no" << id << "entity!";
 	}
 }
 
+// :UPDATE:VEH: 5:[204::[2099.44,6388.62,0]::0::1::[202,203]] 
 void commandUpdateVeh(const vector<string> &args)
 {
 	COMMAND_CHECK_INPUT_PARAMETERS(5)
-		COMMAND_CHECK_WRITING_STATE
+	COMMAND_CHECK_WRITING_STATE
 
-	int id = stoi(args[0]);
+	int id = atoi(args[0].c_str());
 	if (!j["entities"][id].is_null()) {
-		j["entities"][id]["positions"].push_back(json::array({ json::parse(args[1].c_str()), json::parse(args[2].c_str()),
-			json::parse(args[3].c_str()), json::parse(args[4].c_str()) }));
+		j["entities"][id]["positions"].push_back(
+			json::array({
+				json::parse(args[1]),
+				JSON_INT_FROM_ARG(2),
+				JSON_INT_FROM_ARG(3),
+				json::parse(args[4]) }));
 	}
 	else {
 		LOG(ERROR) << "Incorrect params, no" << id << "entity!";
 	}
 }
 
+// :EVENT: 3:[0::"connected"::"[RMC] DoS"] 
+// :EVENT: 5 : [404::"killed"::84::[83, "AKS-74N"]::10]
+// 
 void commandEvent(const vector<string> &args)
 {
 	COMMAND_CHECK_WRITING_STATE
-		if (args.size() < 3) {
-			ERROR_THROW("Number of arguments lesser then 3!")
-		}
+	if (args.size() < 3) {
+		ERROR_THROW("Number of arguments lesser then 3!")
+	}
 	json arr = json::array();
 	for (int i = 0; i < args.size(); i++) {
-		arr.push_back(json::parse(args[i].c_str()));
+		arr.push_back(json::parse(args[i]));
 	}
 	j["events"].push_back(arr);
 }
