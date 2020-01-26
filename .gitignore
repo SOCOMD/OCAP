@@ -12,6 +12,17 @@ web/data/data.db
 web/data/*.json
 web/data/*.gz
 web/images/maps/*
+*.exp
+*.la
+*.lib
+*.lo
+*.o
+*.obj
+*.pdb
+*.pyc
+*.iobj
+*.ipdb
+
 
 # User-specific files
 *.suo
