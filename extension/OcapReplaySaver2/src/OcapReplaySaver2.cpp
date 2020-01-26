@@ -163,8 +163,8 @@ namespace {
 #define COMMAND_CHECK_WRITING_STATE	if(!is_writing.load()) {ERROR_THROW("Is not writing state!")}
 
 #define JSON_STR_FROM_ARG(N) (json::string_t(filterSqfString(args[N])))
-#define JSON_INT_FROM_ARG(N) (json::number_integer_t(atoi(args[N].c_str())))
-#define JSON_FLOAT_FROM_ARG(N) (json::number_float_t(atof(args[N].c_str())))
+#define JSON_INT_FROM_ARG(N) (json::number_integer_t(stoi(args[N])))
+#define JSON_FLOAT_FROM_ARG(N) (json::number_float_t(stod(args[N])))
 	
 	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 
@@ -636,9 +636,11 @@ void curlUploadNew(const string &b_url, const string &worldname,const string &mi
 			LOG(ERROR) << "Curl error:" << curl_easy_strerror(res) << total.str();
 		else
 			LOG(INFO) << "Curl OK:" << total.str();
+		curl_easy_cleanup(curl);
 		curl_mime_free(mime);
+		curl_slist_free_all(headers);
 	}
-	curl_easy_cleanup(curl);
+	
 }
 
 void curlUploadFile(string url, string file, string fileName, int timeout) {
@@ -820,7 +822,7 @@ void commandFired(const vector<string> &args)
 	COMMAND_CHECK_INPUT_PARAMETERS(3)
 	COMMAND_CHECK_WRITING_STATE
 
-	int id = atoi(args[0].c_str());
+	int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {
 		j["entities"][id]["framesFired"].push_back(json::array({
 			JSON_INT_FROM_ARG(1),
@@ -917,7 +919,7 @@ void commandSave(const vector<string> &args) {
 	pair<string, string> fnames = saveCurrentReplayToTempFile();
 	LOG(INFO) << "TMP:" << fnames.first;
 	string fname = generateResultFileName(j["missionName"]);
-	curlActions(j["worldName"], j["missionName"], to_string(atof(args[3].c_str()) * atof(args[4].c_str())), fname, fnames);
+	curlActions(j["worldName"], j["missionName"], to_string(stod(args[3]) * stod(args[4])), fname, fnames);
 	
 	return commandClear(args);
 }
@@ -937,7 +939,7 @@ void commandUpdateUnit(const vector<string> &args)
 	COMMAND_CHECK_INPUT_PARAMETERS(7)
 	COMMAND_CHECK_WRITING_STATE
 
-		int id = atoi(args[0].c_str());
+		int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {
 		j["entities"][id]["positions"].push_back(json::array({ 
 			json::parse(args[1]),
@@ -959,7 +961,7 @@ void commandUpdateVeh(const vector<string> &args)
 	COMMAND_CHECK_INPUT_PARAMETERS(5)
 	COMMAND_CHECK_WRITING_STATE
 
-	int id = atoi(args[0].c_str());
+	int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {
 		j["entities"][id]["positions"].push_back(
 			json::array({
