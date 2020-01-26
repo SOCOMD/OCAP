@@ -36,6 +36,7 @@ v 4.0.0.7 2019-12-07 Zealot Using CMake for building
 v 4.1.0.0 2020-01-25 Zealot New option for new golang web app
 v 4.1.0.1 2020-01-26 Zealot Data compressing using gzip from zlib
 v 4.1.0.2 2020-01-26 Zealot Filename is stripped from russion symbols and send to webservice, compress is mandatory
+v 4.1.0.3 2020-01-26 Zealot gz is not include in filename
 
 TODO:
 - чтение запись настроек
@@ -43,7 +44,7 @@ TODO:
 
 */
 
-#define CURRENT_VERSION "4.1.0.2"
+#define CURRENT_VERSION "4.1.0.3"
 
 #pragma endregion
 
@@ -176,7 +177,7 @@ namespace {
 		int newMode = 0;
 		int httpRequestTimeout = 120;
 		int traceLog = 0;
-		int compress = 0;
+		//int compress = 0;
 	} config;
 }
 
@@ -377,7 +378,7 @@ pair<string, string> saveCurrentReplayToTempFile() {
 	LOG(INFO) << "Replay saved:" << tName;
 	string archive_name;
 
-	if (true || config.compress) {
+	if (true /*config.compress*/) {
 		archive_name = string(tName) + ".gz";
 		if (write_compressed_data(archive_name.c_str(), all_replay.c_str(), all_replay.size())) {
 			LOG(INFO) << "Archive saved:" << string(tName) + ".gz";
@@ -424,8 +425,8 @@ void readWriteConfig(HMODULE hModule) {
 			{ "newMode" , config.newMode},
 			{ "newUrl", config.newUrl},
 			{ "newServerGameType", config.newServerGameType },
-			{ "newUrlRequestSecret", config.newUrlRequestSecret},
-			{ "compress", config.compress}
+			{ "newUrlRequestSecret", config.newUrlRequestSecret}
+			//{ "compress", config.compress}
 		};
 		std::ofstream out(path_sample, ofstream::out | ofstream::binary);
 		out << j.dump(4) << endl;
@@ -503,14 +504,14 @@ void readWriteConfig(HMODULE hModule) {
 	else {
 		LOG(WARNING) << "newUrlRequestSecret should be string!";
 	}
-
+	/*
 	if (!jcfg["compress"].is_null() && jcfg["compress"].is_number_integer()) {
 		config.compress = jcfg["compress"].get<int>();
 		LOG(TRACE) << "Read compress=" << config.newMode;
 	}
 	else {
 		LOG(WARNING) << "compress should be integer!";
-	}
+	}*/
 
 	if (config.traceLog) {
 		el::Configurations defaultConf(*el::Loggers::getLogger("default")->configurations());
@@ -577,7 +578,7 @@ void curlUploadNew(const string &b_url, const string &worldname,const string &mi
 		curl_mime_filedata(part, file.c_str());
 		part = curl_mime_addpart(mime);
 		curl_mime_name(part, "filename");
-		curl_mime_data(part, archive ? (filename + ".gz").c_str() : filename.c_str(), CURL_ZERO_TERMINATED);
+		curl_mime_data(part, filename.c_str(), CURL_ZERO_TERMINATED);
 		part = curl_mime_addpart(mime);
 		curl_mime_name(part, "worldName");
 		curl_mime_data(part, worldname.c_str(), CURL_ZERO_TERMINATED);
