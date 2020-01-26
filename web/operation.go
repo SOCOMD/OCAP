@@ -19,7 +19,6 @@
 package main
 
 import (
-	"compress/gzip"
 	"database/sql"
 	"io"
 	"log"
@@ -55,25 +54,30 @@ func NewOperation(r *http.Request) (op Operation, err error) {
 	op.WorldName = r.FormValue("worldName")
 	op.MissionName = r.FormValue("missionName")
 	op.MissionDuration, err = strconv.ParseFloat(r.FormValue("missionDuration"), 64)
+	op.Filename = r.FormValue("filename")
 	op.Date = time.Now().Format("2006-01-02")
 	op.Class = r.FormValue("type")
 	return op, err
 }
 
 // SaveFileAsGZIP saves the file in compressed form on the server
-func (o *Operation) SaveFileAsGZIP(dir string, r io.Reader) (err error) {
-	o.Filename = time.Now().Format("2006-01-02_15-04-05") + ".json"
-
-	f, err := os.Create(path.Join(dir, o.Filename+".gz"))
-	defer f.Close()
+func (o *Operation) SaveFileAsGZIP(dir string, r *http.Request) (err error) {
+	// get reader file
+	reader, _, err := r.FormFile("file")
 	if err != nil {
 		return err
 	}
+	defer reader.Close()
 
-	w := gzip.NewWriter(f)
+	// get writer file
+	w, err := os.Create(path.Join(dir, o.Filename+".gz"))
+	if err != nil {
+		return err
+	}
 	defer w.Close()
 
-	_, err = io.Copy(w, r)
+	// copy file
+	_, err = io.Copy(w, reader)
 	if err != nil {
 		return err
 	}

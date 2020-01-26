@@ -99,16 +99,12 @@ func OperationAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	file, _, err := r.FormFile("file")
-	check(err)
-	defer file.Close()
-
 	// Parser new opertion
 	op, err := NewOperation(r)
 	check(err)
 
 	// Compress operation
-	err = op.SaveFileAsGZIP("static/data/", file)
+	err = op.SaveFileAsGZIP("static/data/", r)
 	check(err)
 
 	// Insert new line in db
