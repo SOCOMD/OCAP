@@ -95,7 +95,7 @@ int utf8to_translit(const char* in_buff, char* out_buff) {
     };
 
     if (!out_buff) {
-        return strlen(in_buff) * 4L;
+        return strlen(in_buff) * 4L + 1L;
     }
 
     const size_t symb_size = sizeof(symbols) / sizeof(symbols[0]);

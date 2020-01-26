@@ -396,14 +396,11 @@ std::string generateResultFileName(const std::string &name) {
 	std::tm tm;
 	localtime_s(&tm, &t);
 	std::stringstream ss;
-	ss << std::put_time(&tm, REPLAY_FILEMASK) << name << ".json";
-	vector<char> out(utf8to_translit(ss.str().c_str(), 0));
-	utf8to_translit(ss.str().c_str(), out.data());
-	vector<char>::iterator it = find(out.begin(), out.end(), '\0');
-	if (it != out.end()) {
-		out.resize(out.size() - distance(it, out.end()));
-	}
-	string out_s(out.begin(), out.end());
+	ss << std::put_time(&tm, REPLAY_FILEMASK) << name;
+	unique_ptr<char[]> out( new char [utf8to_translit(ss.str().c_str(), 0)]);
+	utf8to_translit(ss.str().c_str(), out.get());
+	string out_s(static_cast<char*>(out.get()));
+	out_s = out_s + ".json";
 	LOG(TRACE) << ss.str() << out_s;
 	return out_s;
 }
