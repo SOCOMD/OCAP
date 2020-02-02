@@ -38,6 +38,7 @@ v 4.1.0.1 2020-01-26 Zealot Data compressing using gzip from zlib
 v 4.1.0.2 2020-01-26 Zealot Filename is stripped from russion symbols and send to webservice, compress is mandatory
 v 4.1.0.3 2020-01-26 Zealot gz is not include in filename
 v 4.1.0.4 2020-01-26 Zealot small fixes and optimizations
+v 4.1.1.0 2020-01-26 Zealot Actually working )
 
 TODO:
 - чтение запись настроек
@@ -45,7 +46,7 @@ TODO:
 
 */
 
-#define CURRENT_VERSION "4.1.0.4"
+#define CURRENT_VERSION "4.1.1.0"
 
 #pragma endregion
 
@@ -163,8 +164,8 @@ namespace {
 #define COMMAND_CHECK_WRITING_STATE	if(!is_writing.load()) {ERROR_THROW("Is not writing state!")}
 
 #define JSON_STR_FROM_ARG(N) (json::string_t(filterSqfString(args[N])))
-#define JSON_INT_FROM_ARG(N) (json::number_integer_t(atoi(args[N].c_str())))
-#define JSON_FLOAT_FROM_ARG(N) (json::number_float_t(atof(args[N].c_str())))
+#define JSON_INT_FROM_ARG(N) (json::number_integer_t(stoi(args[N])))
+#define JSON_FLOAT_FROM_ARG(N) (json::number_float_t(stod(args[N])))
 	
 	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
 
@@ -176,13 +177,12 @@ namespace {
 	struct {
 		std::string dbInsertUrl = "http://ocap.red-bear.ru/data/receive.php?option=dbInsert";
 		std::string addFileUrl = "http://ocap.red-bear.ru/data/receive.php?option=addFile";
-		std::string newUrl = "127.0.0.1:5000/api/v1/operations/add";
+		std::string newUrl = "https://ocap.red-bear.ru/api/v1/operations/add";
 		std::string newServerGameType = "tvt";
 		std::string newUrlRequestSecret = "pwd1234";
 		int newMode = 0;
 		int httpRequestTimeout = 120;
 		int traceLog = 0;
-		//int compress = 0;
 	} config;
 }
 
@@ -398,7 +398,7 @@ pair<string, string> saveCurrentReplayToTempFile() {
 	LOG(INFO) << "Replay saved:" << tName;
 	string archive_name;
 
-	if (true /*config.compress*/) {
+	if (true) {
 		archive_name = string(tName) + ".gz";
 		if (write_compressed_data(archive_name.c_str(), all_replay.c_str(), all_replay.size())) {
 			LOG(INFO) << "Archive saved:" << archive_name;
@@ -446,7 +446,6 @@ void readWriteConfig(HMODULE hModule) {
 			{ "newUrl", config.newUrl},
 			{ "newServerGameType", config.newServerGameType },
 			{ "newUrlRequestSecret", config.newUrlRequestSecret}
-			//{ "compress", config.compress}
 		};
 		std::ofstream out(path_sample, ofstream::out | ofstream::binary);
 		out << j.dump(4) << endl;
@@ -524,14 +523,6 @@ void readWriteConfig(HMODULE hModule) {
 	else {
 		LOG(WARNING) << "newUrlRequestSecret should be string!";
 	}
-	/*
-	if (!jcfg["compress"].is_null() && jcfg["compress"].is_number_integer()) {
-		config.compress = jcfg["compress"].get<int>();
-		LOG(TRACE) << "Read compress=" << config.newMode;
-	}
-	else {
-		LOG(WARNING) << "compress should be integer!";
-	}*/
 
 	if (config.traceLog) {
 		el::Configurations defaultConf(*el::Loggers::getLogger("default")->configurations());
@@ -573,22 +564,40 @@ void curlDbInsert(string b_url, string worldname, string missionName, string mis
 	}
 }
 
+
+void log_curl_exe_string(const string& b_url, const string& worldname, const string& missionName,
+	const string& missionDuration, const string& filename, const pair<string, string>& pair_files,
+	int timeout, const string& gametype, const string& secret) {
+	stringstream ss;
+	ss << "curl ";
+	ss << "-F file=\"@" << pair_files.second << "\" ";
+	ss << "-F filename=\"" << filename << "\" ";
+	ss << "-F worldName=\"" << worldname << "\" ";
+	ss << "-F missionName=\"" << missionName << "\" ";
+	ss << "-F missionDuration=\"" << missionDuration << "\" ";
+	ss << "-F type=\"" << gametype << "\" ";
+	ss << b_url;
+	LOG(INFO) << "String for reupload: ";
+	LOG(INFO) << ss.str();
+}
+
 void curlUploadNew(const string &b_url, const string &worldname,const string &missionName, const string &missionDuration, const string &filename, const pair<string,string> &pair_files, int timeout,const string &gametype, const string &secret) {
 	LOG(INFO) << b_url  << worldname << missionName << missionDuration << filename <<  pair_files << timeout << gametype;
+	log_curl_exe_string(b_url, worldname, missionName, missionDuration, filename, pair_files, timeout, gametype, secret);
 	CURL* curl;
 	CURLcode res;
 	bool archive = !pair_files.second.empty();
 	string file = archive ? pair_files.second : pair_files.first;
+	static const char buf[] = "Expect:";
 	curl = curl_easy_init();
 	if (curl) {
-		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
 		curl_easy_setopt(curl, CURLOPT_URL, b_url.c_str());
 		curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, (long)timeout);
 		curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
 		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
 		struct curl_slist* headers = NULL;
-		headers = curl_slist_append(headers, "Content-Type: multipart/form-data; boundary=--------------------------330192537127611670327958");
+		headers = curl_slist_append(headers, buf);
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 		curl_mime* mime;
 		curl_mimepart* part;
@@ -609,9 +618,6 @@ void curlUploadNew(const string &b_url, const string &worldname,const string &mi
 		curl_mime_name(part, "missionDuration");
 		curl_mime_data(part, missionDuration.c_str(), CURL_ZERO_TERMINATED);
 		part = curl_mime_addpart(mime);
-		/*curl_mime_name(part, "archive");
-		curl_mime_data(part, archive ? "1" : "0", CURL_ZERO_TERMINATED);
-		part = curl_mime_addpart(mime);*/
 		curl_mime_name(part, "type");
 		curl_mime_data(part, gametype.c_str(), CURL_ZERO_TERMINATED);
 		part = curl_mime_addpart(mime);
@@ -636,9 +642,10 @@ void curlUploadNew(const string &b_url, const string &worldname,const string &mi
 			LOG(ERROR) << "Curl error:" << curl_easy_strerror(res) << total.str();
 		else
 			LOG(INFO) << "Curl OK:" << total.str();
+		curl_easy_cleanup(curl);
 		curl_mime_free(mime);
+		curl_slist_free_all(headers);
 	}
-	curl_easy_cleanup(curl);
 }
 
 void curlUploadFile(string url, string file, string fileName, int timeout) {
@@ -696,13 +703,12 @@ void curlUploadFile(string url, string file, string fileName, int timeout) {
 
 			curl_mime_free(form);
 			curl_easy_cleanup(curl);
+			curl_slist_free_all(headerlist);
 		}
 	}
 	catch (...) {
 		LOG(ERROR) << "Curl unknown exception!";
 	}
-
-
 }
 
 void curlActions(string worldName, string missionName, string duration, string filename, pair<string,string> tfile) {
@@ -820,7 +826,7 @@ void commandFired(const vector<string> &args)
 	COMMAND_CHECK_INPUT_PARAMETERS(3)
 	COMMAND_CHECK_WRITING_STATE
 
-	int id = atoi(args[0].c_str());
+	int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {
 		j["entities"][id]["framesFired"].push_back(json::array({
 			JSON_INT_FROM_ARG(1),
@@ -917,7 +923,7 @@ void commandSave(const vector<string> &args) {
 	pair<string, string> fnames = saveCurrentReplayToTempFile();
 	LOG(INFO) << "TMP:" << fnames.first;
 	string fname = generateResultFileName(j["missionName"]);
-	curlActions(j["worldName"], j["missionName"], to_string(atof(args[3].c_str()) * atof(args[4].c_str())), fname, fnames);
+	curlActions(j["worldName"], j["missionName"], to_string(stod(args[3]) * stod(args[4])), fname, fnames);
 	
 	return commandClear(args);
 }
@@ -937,7 +943,7 @@ void commandUpdateUnit(const vector<string> &args)
 	COMMAND_CHECK_INPUT_PARAMETERS(7)
 	COMMAND_CHECK_WRITING_STATE
 
-		int id = atoi(args[0].c_str());
+		int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {
 		j["entities"][id]["positions"].push_back(json::array({ 
 			json::parse(args[1]),
@@ -959,7 +965,7 @@ void commandUpdateVeh(const vector<string> &args)
 	COMMAND_CHECK_INPUT_PARAMETERS(5)
 	COMMAND_CHECK_WRITING_STATE
 
-	int id = atoi(args[0].c_str());
+	int id = stoi(args[0]);
 	if (!j["entities"][id].is_null()) {
 		j["entities"][id]["positions"].push_back(
 			json::array({
