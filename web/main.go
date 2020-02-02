@@ -93,7 +93,7 @@ func OperationGet(w http.ResponseWriter, r *http.Request) {
 // OperationAdd http header add operation only for server
 func OperationAdd(w http.ResponseWriter, r *http.Request) {
 	// Check secret variable
-	if r.FormValue("secret") != options.Secret {
+	if options.Secret != "" && r.FormValue("secret") != options.Secret {
 		log.Println(r.RemoteAddr, "invalid secret denied access")
 		w.WriteHeader(http.StatusForbidden)
 		return
