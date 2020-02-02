@@ -26,13 +26,11 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
-	"mime"
 	"net/http"
 	"os"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/mholt/certmagic"
 )
 
 var (
@@ -55,7 +53,7 @@ type Options struct {
 	Author      string      `json:"author"`
 	Language    string      `json:"language"`
 	Version     string      `json:"version"`
-	Domains     []string    `json:"domains"`
+	Listen      string      `json:"listen"`
 	Secret      string      `json:"secret"`
 	ClassesGame []ClassGame `json:"classes-game"`
 }
@@ -210,10 +208,6 @@ func main() {
 		panic(err)
 	}
 
-	// Add exeption
-	// not set header for json files
-	mime.AddExtensionType(".json", "application/json")
-
 	// Create router
 	mux := http.NewServeMux()
 	fs := http.FileServer(http.Dir("static"))
@@ -221,5 +215,5 @@ func main() {
 	mux.HandleFunc("/api/v1/operations/add", OperationAdd)
 	mux.HandleFunc("/api/v1/operations/get", OperationGet)
 
-	certmagic.HTTPS(options.Domains, LoggerRequest(mux))
+	http.ListenAndServe(options.Listen, LoggerRequest(mux))
 }
