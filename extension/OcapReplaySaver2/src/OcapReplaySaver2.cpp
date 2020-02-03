@@ -69,10 +69,12 @@ TODO:
 #include <queue>
 #include <tuple>
 
+#if WIN32
 #include <Windows.h>
 #include <direct.h>
 #include <process.h>
 #include <curl\curl.h>
+#endif
 
 #include "json.hpp"
 
@@ -146,7 +148,7 @@ namespace {
 	class ocapException : public std::exception {
 	public:
 		ocapException() : std::exception() {};
-		ocapException(const char* e) : std::exception(e) {};
+		ocapException(const char* e) : std::exception() {};
 
 	};
 
@@ -331,207 +333,204 @@ void prepareMarkerFrames(int frames) {
 
 }
 
-
+//TODO: Save replay json data to file
 std::string saveCurrentReplayToTempFile() {
-	char tPath[MAX_PATH] = { 0 };
-	char tName[MAX_PATH] = { 0 };
-	GetTempPathA(MAX_PATH, tPath);
-	GetTempFileNameA(tPath, "ocap", 0, tName);
+	// char tPath[MAX_PATH] = { 0 };
+	// char tName[MAX_PATH] = { 0 };
+	// GetTempPathA(MAX_PATH, tPath);
+	// GetTempFileNameA(tPath, "ocap", 0, tName);
 
-	fstream currentReplay(tName, fstream::out | fstream::binary);
-	if (!currentReplay.is_open()) {
-		LOG(ERROR) << "Cannot open result file: " << tName;
-		throw ocapException("Cannot open temp file!");
-	}
-	if (config.traceLog) 
-		currentReplay << j.dump(4);
-	else 
-		currentReplay << j.dump();
-	currentReplay.flush();
-	currentReplay.close();
-	LOG(INFO) << "Replay saved:" << tName;
-	return string(tName);
-
+	// fstream currentReplay(tName, fstream::out | fstream::binary);
+	// if (!currentReplay.is_open()) {
+	// 	LOG(ERROR) << "Cannot open result file: " << tName;
+	// 	throw ocapException("Cannot open temp file!");
+	// }
+	// if (config.traceLog) 
+	// 	currentReplay << j.dump(4);
+	// else 
+	// 	currentReplay << j.dump();
+	// currentReplay.flush();
+	// currentReplay.close();
+	// LOG(INFO) << "Replay saved:" << tName;
+	// return string(tName);
 }
 
+//TODO: Generate filename with timestamp
 std::string generateResultFileName(const std::string &name) {
-	std::time_t t = std::time(nullptr);
-	std::tm tm;
-	localtime_s(&tm, &t);
-	std::stringstream ss;
-	ss << std::put_time(&tm, REPLAY_FILEMASK) << name << ".json";
-	return ss.str();
+	// std::time_t t = std::time(nullptr);
+	// std::tm tm;
+	// localtime_s(&tm, &t);
+	// std::stringstream ss;
+	// ss << std::put_time(&tm, REPLAY_FILEMASK) << name << ".json";
+	// return ss.str();
+	return string("mission_recording.json");
 }
 
 #pragma region Вычитка конфига
-void readWriteConfig(HMODULE hModule) {
-	wchar_t szPath[MAX_PATH], szDirPath[_MAX_DIR];
-	GetModuleFileNameW(hModule, szPath, MAX_PATH);
-	_wsplitpath_s(szPath, 0, 0, szDirPath, _MAX_DIR, 0, 0, 0, 0);
-	wstring path(szDirPath), path_sample(szDirPath);
-	path += CONFIG_NAME;
-	path_sample += CONFIG_NAME_SAMPLE;
-	if (!std::ifstream(path_sample)) {
-		LOG(INFO) << "Creating sample config file: " << converter.to_bytes(path_sample);
-		json j = { { "addFileUrl", config.addFileUrl },{ "dbInsertUrl", config.dbInsertUrl },{ "httpRequestTimeout", config.httpRequestTimeout }, {"traceLog", config.traceLog} };
-		std::ofstream out(path_sample, ofstream::out | ofstream::binary);
-		out << j.dump(4) << endl;
-	}
-	LOG(INFO) << "Trying to read config file:" << converter.to_bytes(path);
-	bool cfgOpened = false;
-	ifstream cfg(path, ifstream::in | ifstream::binary);
+// void readWriteConfig(HMODULE hModule) {
+// 	wchar_t szPath[MAX_PATH], szDirPath[_MAX_DIR];
+// 	GetModuleFileNameW(hModule, szPath, MAX_PATH);
+// 	_wsplitpath_s(szPath, 0, 0, szDirPath, _MAX_DIR, 0, 0, 0, 0);
+// 	wstring path(szDirPath), path_sample(szDirPath);
+// 	path += CONFIG_NAME;
+// 	path_sample += CONFIG_NAME_SAMPLE;
+// 	if (!std::ifstream(path_sample)) {
+// 		LOG(INFO) << "Creating sample config file: " << converter.to_bytes(path_sample);
+// 		json j = { { "addFileUrl", config.addFileUrl },{ "dbInsertUrl", config.dbInsertUrl },{ "httpRequestTimeout", config.httpRequestTimeout }, {"traceLog", config.traceLog} };
+// 		std::ofstream out(path_sample, ofstream::out | ofstream::binary);
+// 		out << j.dump(4) << endl;
+// 	}
+// 	LOG(INFO) << "Trying to read config file:" << converter.to_bytes(path);
+// 	bool cfgOpened = false;
+// 	ifstream cfg(path, ifstream::in | ifstream::binary);
 
-	json jcfg;
-	if (!cfg.is_open()) {
-		LOG(WARNING) << "Cannot open cfg file! Using default params.";
-		return;
-	}
-	cfg >> jcfg;
-	if (!jcfg["addFileUrl"].is_null() && jcfg["addFileUrl"].is_string()) {
-		config.addFileUrl = jcfg["addFileUrl"].get<string>();
-	}
-	else {
-		LOG(WARNING) << "addFileUrl should be string!";
-	}
+// 	json jcfg;
+// 	if (!cfg.is_open()) {
+// 		LOG(WARNING) << "Cannot open cfg file! Using default params.";
+// 		return;
+// 	}
+// 	cfg >> jcfg;
+// 	if (!jcfg["addFileUrl"].is_null() && jcfg["addFileUrl"].is_string()) {
+// 		config.addFileUrl = jcfg["addFileUrl"].get<string>();
+// 	}
+// 	else {
+// 		LOG(WARNING) << "addFileUrl should be string!";
+// 	}
 
-	if (!jcfg["dbInsertUrl"].is_null() && jcfg["dbInsertUrl"].is_string()) {
-		config.dbInsertUrl = jcfg["dbInsertUrl"].get<string>();
-	}
-	else {
-		LOG(WARNING) << "dbInsertUrl should be string!";
-	}
+// 	if (!jcfg["dbInsertUrl"].is_null() && jcfg["dbInsertUrl"].is_string()) {
+// 		config.dbInsertUrl = jcfg["dbInsertUrl"].get<string>();
+// 	}
+// 	else {
+// 		LOG(WARNING) << "dbInsertUrl should be string!";
+// 	}
 
-	if (!jcfg["httpRequestTimeout"].is_null() && jcfg["httpRequestTimeout"].is_number_integer()) {
-		config.httpRequestTimeout = jcfg["httpRequestTimeout"].get<int>();
-	}
-	else {
-		LOG(WARNING) << "httpRequestTimeout should be integer!";
-	}
+// 	if (!jcfg["httpRequestTimeout"].is_null() && jcfg["httpRequestTimeout"].is_number_integer()) {
+// 		config.httpRequestTimeout = jcfg["httpRequestTimeout"].get<int>();
+// 	}
+// 	else {
+// 		LOG(WARNING) << "httpRequestTimeout should be integer!";
+// 	}
 
-	if (!jcfg["traceLog"].is_null() && jcfg["traceLog"].is_number_integer()) {
-		config.traceLog = jcfg["traceLog"].get<int>();
-	}
-	else {
-		LOG(WARNING) << "traceLog should be integer!";
-	}
+// 	if (!jcfg["traceLog"].is_null() && jcfg["traceLog"].is_number_integer()) {
+// 		config.traceLog = jcfg["traceLog"].get<int>();
+// 	}
+// 	else {
+// 		LOG(WARNING) << "traceLog should be integer!";
+// 	}
 
-	if (config.traceLog) {
-		el::Configurations defaultConf(*el::Loggers::getLogger("default")->configurations());
-		defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "true");
-		el::Loggers::reconfigureLogger(el::Loggers::getLogger("default", true), defaultConf);
-	}
-}
+// 	if (config.traceLog) {
+// 		el::Configurations defaultConf(*el::Loggers::getLogger("default")->configurations());
+// 		defaultConf.set(el::Level::Trace, el::ConfigurationType::Enabled, "true");
+// 		el::Loggers::reconfigureLogger(el::Loggers::getLogger("default", true), defaultConf);
+// 	}
+// }
 #pragma endregion
 
 
 #pragma region CURL
 
-
-
-
+//TODO: Create DB Entry
 void curlDbInsert(string b_url, string worldname, string missionName, string missionDuration, string filename, int timeout) {
-	LOG(INFO) << worldname << missionName << missionDuration << filename;
-	try {
-		CURL *curl;
-		CURLcode res;
-		curl = curl_easy_init();
-		if (curl) {
-			stringstream ss;
-			ss << b_url << "&worldName="; char * url = curl_easy_escape(curl, worldname.c_str(), 0); ss << url;  curl_free(url);
-			ss << "&missionName="; url = curl_easy_escape(curl, missionName.c_str(), 0); ss << url;  curl_free(url);
-			ss << "&missionDuration="; url = curl_easy_escape(curl, missionDuration.c_str(), 0); ss << url;  curl_free(url);
-			ss << "&filename="; url = curl_easy_escape(curl, filename.c_str(), 0); ss << url;  curl_free(url);
-			curl_easy_setopt(curl, CURLOPT_URL, ss.str().c_str());
-			curl_easy_setopt(curl, CURLOPT_TIMEOUT, (long)timeout);
-			curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-			res = curl_easy_perform(curl);
-			if (res != CURLE_OK)
-				LOG(ERROR) << "Curl error:" << curl_easy_strerror(res) << ss.str();
-			else
-				LOG(INFO) << "Curl OK:" << ss.str();
+	// LOG(INFO) << worldname << missionName << missionDuration << filename;
+	// try {
+	// 	CURL *curl;
+	// 	CURLcode res;
+	// 	curl = curl_easy_init();
+	// 	if (curl) {
+	// 		stringstream ss;
+	// 		ss << b_url << "&worldName="; char * url = curl_easy_escape(curl, worldname.c_str(), 0); ss << url;  curl_free(url);
+	// 		ss << "&missionName="; url = curl_easy_escape(curl, missionName.c_str(), 0); ss << url;  curl_free(url);
+	// 		ss << "&missionDuration="; url = curl_easy_escape(curl, missionDuration.c_str(), 0); ss << url;  curl_free(url);
+	// 		ss << "&filename="; url = curl_easy_escape(curl, filename.c_str(), 0); ss << url;  curl_free(url);
+	// 		curl_easy_setopt(curl, CURLOPT_URL, ss.str().c_str());
+	// 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, (long)timeout);
+	// 		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+	// 		res = curl_easy_perform(curl);
+	// 		if (res != CURLE_OK)
+	// 			LOG(ERROR) << "Curl error:" << curl_easy_strerror(res) << ss.str();
+	// 		else
+	// 			LOG(INFO) << "Curl OK:" << ss.str();
 
-			curl_easy_cleanup(curl);
+	// 		curl_easy_cleanup(curl);
 			
-		}
-	}
-	catch (...) {
-		LOG(ERROR) << "Curl unknown exception!";
-	}
+	// 	}
+	// }
+	// catch (...) {
+	// 	LOG(ERROR) << "Curl unknown exception!";
+	// }
 }
 
-
+//TODO: Upload File
 void curlUploadFile(string url, string file, string fileName, int timeout) {
-	LOG(INFO) << fileName << file << timeout << url;
-	try {
-		CURL *curl;
-		CURLcode res;
-		curl_mime *form = NULL;
-		curl_mimepart *field = NULL;
-		struct curl_slist *headerlist = NULL;
-		static const char buf[] = "Expect:";
+	// LOG(INFO) << fileName << file << timeout << url;
+	// try {
+	// 	CURL *curl;
+	// 	CURLcode res;
+	// 	curl_mime *form = NULL;
+	// 	curl_mimepart *field = NULL;
+	// 	struct curl_slist *headerlist = NULL;
+	// 	static const char buf[] = "Expect:";
 
-		curl = curl_easy_init();
-		if (curl) {
-			form = curl_mime_init(curl);
+	// 	curl = curl_easy_init();
+	// 	if (curl) {
+	// 		form = curl_mime_init(curl);
 
-			field = curl_mime_addpart(form);
-			curl_mime_name(field, "fileContents");
-			curl_mime_filedata(field, file.c_str()); 
+	// 		field = curl_mime_addpart(form);
+	// 		curl_mime_name(field, "fileContents");
+	// 		curl_mime_filedata(field, file.c_str()); 
 
-			field = curl_mime_addpart(form);
-			curl_mime_name(field, "fileName");
-			curl_mime_data(field, fileName.c_str(), CURL_ZERO_TERMINATED); 
-			field = curl_mime_addpart(form);
-			curl_mime_name(field, "submit");
-			curl_mime_data(field, "send", CURL_ZERO_TERMINATED);
-			headerlist = curl_slist_append(headerlist, buf);
+	// 		field = curl_mime_addpart(form);
+	// 		curl_mime_name(field, "fileName");
+	// 		curl_mime_data(field, fileName.c_str(), CURL_ZERO_TERMINATED); 
+	// 		field = curl_mime_addpart(form);
+	// 		curl_mime_name(field, "submit");
+	// 		curl_mime_data(field, "send", CURL_ZERO_TERMINATED);
+	// 		headerlist = curl_slist_append(headerlist, buf);
 
-			curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-			curl_easy_setopt(curl, CURLOPT_TIMEOUT, (long)timeout);
-			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);
-			curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
-			curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+	// 		curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	// 		curl_easy_setopt(curl, CURLOPT_TIMEOUT, (long)timeout);
+	// 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);
+	// 		curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
+	// 		curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
 
-			res = curl_easy_perform(curl);
+	// 		res = curl_easy_perform(curl);
 
-			stringstream total;
-			if (!res) {
-				curl_off_t ul; 
-				double ttotal;
-				res = curl_easy_getinfo(curl, CURLINFO_SIZE_UPLOAD_T, &ul);
-				if (!res)
-					total << "Uploaded " << ul << " bytes";
-				res = curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &ttotal);
-				if (!res)
-					total << " in " <<  ttotal << " sec.";
+	// 		stringstream total;
+	// 		if (!res) {
+	// 			curl_off_t ul; 
+	// 			double ttotal;
+	// 			res = curl_easy_getinfo(curl, CURLINFO_SIZE_UPLOAD_T, &ul);
+	// 			if (!res)
+	// 				total << "Uploaded " << ul << " bytes";
+	// 			res = curl_easy_getinfo(curl, CURLINFO_TOTAL_TIME, &ttotal);
+	// 			if (!res)
+	// 				total << " in " <<  ttotal << " sec.";
 				
-			}
-			total << " URL:" << url;
+	// 		}
+	// 		total << " URL:" << url;
 
-			if (res != CURLE_OK)
-				LOG(ERROR) << "Curl error:" << curl_easy_strerror(res) << total.str();
-			else
-				LOG(INFO) << "Curl OK:" << total.str();
+	// 		if (res != CURLE_OK)
+	// 			LOG(ERROR) << "Curl error:" << curl_easy_strerror(res) << total.str();
+	// 		else
+	// 			LOG(INFO) << "Curl OK:" << total.str();
 
-			curl_easy_cleanup(curl);
-		}
-	}
-	catch (...) {
-		LOG(ERROR) << "Curl unknown exception!";
-	}
-
-
+	// 		curl_easy_cleanup(curl);
+	// 	}
+	// }
+	// catch (...) {
+	// 	LOG(ERROR) << "Curl unknown exception!";
+	// }
 }
 
 void curlActions(string worldName, string missionName, string duration, string filename, string tfile) {
-	LOG(INFO) << worldName <<  missionName << duration << filename << tfile;
-	if (!curl_init) {
-		curl_global_init(CURL_GLOBAL_ALL);
-		curl_init = true;
-	}
-	curlDbInsert(config.dbInsertUrl, worldName, missionName, duration, filename, config.httpRequestTimeout);
-	curlUploadFile(config.addFileUrl, tfile, filename, config.httpRequestTimeout);
-	LOG(INFO) << "Finished!";
+	// LOG(INFO) << worldName <<  missionName << duration << filename << tfile;
+	// if (!curl_init) {
+	// 	curl_global_init(CURL_GLOBAL_ALL);
+	// 	curl_init = true;
+	// }
+	// curlDbInsert(config.dbInsertUrl, worldName, missionName, duration, filename, config.httpRequestTimeout);
+	// curlUploadFile(config.addFileUrl, tfile, filename, config.httpRequestTimeout);
+	// LOG(INFO) << "Finished!";
 }
 
 #pragma endregion
@@ -812,25 +811,33 @@ void initialize_logger(bool forcelog = false, int verb_level = 0) {
 }
 
 
+#if WIN32
+#define EXPORT __declspec (dllexport)
+#define STDCALL __stdcall
+#else
+#define EXPORT __attribute__((visibility("default")))
+#define STDCALL
+#endif
+
 extern "C"
 {
-	__declspec (dllexport) void __stdcall RVExtensionVersion(char *output, int outputSize);
-	__declspec (dllexport) void __stdcall RVExtension(char *output, int outputSize, const char *function);
-	__declspec (dllexport) int __stdcall RVExtensionArgs(char *output, int outputSize, const char *function, const char **args, int argsCnt);
+	EXPORT void STDCALL RVExtensionVersion(char *output, int outputSize);
+	EXPORT void STDCALL RVExtension(char *output, int outputSize, const char *function);
+	EXPORT int STDCALL RVExtensionArgs(char *output, int outputSize, const char *function, const char **args, int argsCnt);
 }
 
-void __stdcall RVExtensionVersion(char *output, int outputSize)
+void STDCALL RVExtensionVersion(char *output, int outputSize)
 {
-	strncpy_s(output, outputSize, CURRENT_VERSION, _TRUNCATE);
+	strncpy(output, CURRENT_VERSION, outputSize);
 }
 
-void __stdcall RVExtension(char *output, int outputSize, const char *function)
+void STDCALL RVExtension(char *output, int outputSize, const char *function)
 {
 	LOG(ERROR) << "IN:" << function << " OUT:" << "Error: Not supported call";
-	strncpy_s(output, outputSize, "Error: Not supported call", _TRUNCATE);
+	strncpy(output, "Error: Not supported call", outputSize);
 }
 
-int __stdcall RVExtensionArgs(char *output, int outputSize, const char *function, const char **args, int argsCnt)
+int STDCALL RVExtensionArgs(char *output, int outputSize, const char *function, const char **args, int argsCnt)
 {
 	int res = 0;
 	if (config.traceLog) {
@@ -876,7 +883,7 @@ int __stdcall RVExtensionArgs(char *output, int outputSize, const char *function
 	return res;
 }
 
-
+#if WIN32
 // Normal Windows DLL junk...
 BOOL APIENTRY DllMain(HMODULE hModule,
 	DWORD  ul_reason_for_call,
@@ -906,3 +913,8 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	}
 	return TRUE;
 }
+#else
+int main() {
+	return 0;
+}
+#endif
